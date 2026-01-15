@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="../styles/base.css" />
+    <link rel="stylesheet" href="profile.css" />
+    <title>Profile</title>
+  </head>
+  <body>
+    <div class="app-layout">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div style="padding: 0 12px; margin-bottom: 32px;">
+          <!-- Placeholder Logo/Brand -->
+          <div style="font-weight: 700; font-size: 20px; display: flex; align-items: center; gap: 10px;">
+            <div style="width: 24px; height: 24px; background: var(--primary); border-radius: 6px;"></div>
+            ResumeGen
+          </div>
+        </div>
+
+        <nav class="nav-menu">
+          <a href="profile.html" class="nav-item active">
+            <span>Profile</span>
+          </a>
+          <a href="stats.html" class="nav-item">
+            <span>Stats</span>
+          </a>
+           <a href="settings.html" class="nav-item">
+            <span>Settings</span>
+          </a>
+        </nav>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <div class="header flex justify-between items-center mb-4">
+          <div>
+            <h1>Profile</h1>
+            <p style="margin-bottom: 0;">Manage your resume data stored locally in Chrome.</p>
+          </div>
+          <div class="toolbar">
+             <button class="primary" type="submit" form="profileForm">Save Changes</button>
+             <span class="small" id="status"></span>
+          </div>
+        </div>
+
+        <form id="profileForm">
+          <section class="card">
+            <h2>Import from Resume</h2>
+            <p class="text-small">Upload a resume to auto-fill fields. Requires a Gemini API key in Settings.</p>
+            
+            <div class="flex items-center gap-4 mt-4">
+                <div style="flex: 1;">
+                     <input id="resumeFile" type="file" accept=".pdf,.txt,.md,.rtf" style="padding: 8px;" />
+                </div>
+                <button class="primary" type="button" id="parseResume">Extract & Auto-Fill</button>
+            </div>
+            <span class="small" id="resumeStatus"></span>
+            
+            <details class="extract-preview" id="extractPreview" style="margin-top: 16px;">
+              <summary style="cursor: pointer; color: var(--primary); font-weight: 500;">Preview extracted text</summary>
+              <div class="extract-preview-body" style="margin-top: 12px;">
+                <textarea id="resumeExtracted" class="preview-text" rows="10" readonly style="font-family: monospace; font-size: 12px; background: #F3F4F6;"></textarea>
+                <div class="toolbar mt-4">
+                  <button class="ghost" type="button" id="copyExtracted">Copy text</button>
+                  <span class="small" id="resumeExtractedMeta"></span>
+                </div>
+              </div>
+            </details>
+          </section>
+          <section class="card">
+            <h2>Personal Information</h2>
+            <div class="grid grid-2">
+              <div>
+                <label for="fullName">Full Name</label>
+                <input id="fullName" name="fullName" type="text" placeholder="e.g. Jane Doe" />
+              </div>
+              <div>
+                <label for="email">Email</label>
+                <input id="email" name="email" type="email" placeholder="jane@example.com" />
+              </div>
+              <div>
+                <label for="phone">Phone</label>
+                <input id="phone" name="phone" type="tel" placeholder="+1 (555) 000-0000" />
+              </div>
+              <div>
+                <label for="location">Location</label>
+                <input id="location" name="location" type="text" placeholder="City, State, Country" />
+              </div>
+            </div>
+            
+            <label for="summary">Professional Summary</label>
+            <textarea id="summary" name="summary" placeholder="Briefly describe your professional background..."></textarea>
+            
+            <div class="flex justify-between items-center mt-4 mb-4">
+              <h3>Links</h3>
+              <button class="ghost" type="button" data-action="add-link">+ Add Link</button>
+            </div>
+            <div id="linksList" class="grid gap-4"></div>
+          </section>
+
+          <section class="card">
+            <div class="flex justify-between items-center mb-4">
+              <h2>Education</h2>
+              <button class="secondary" type="button" data-action="add-education">Add Education</button>
+            </div>
+            <div id="educationList" class="grid gap-4"></div>
+          </section>
+
+          <section class="card">
+            <div class="flex justify-between items-center mb-4">
+              <h2>Experience</h2>
+              <button class="secondary" type="button" data-action="add-experience">Add Experience</button>
+            </div>
+            <div id="experienceList" class="grid gap-4"></div>
+          </section>
+
+          <section class="card">
+            <div class="flex justify-between items-center mb-4">
+              <h2>Skills</h2>
+              <button class="secondary" type="button" data-action="add-skill">Add Skill Group</button>
+            </div>
+            <div id="skillsList" class="grid gap-4"></div>
+          </section>
+
+          <section class="card">
+            <div class="flex justify-between items-center mb-4">
+              <h2>Projects</h2>
+              <button class="secondary" type="button" data-action="add-project">Add Project</button>
+            </div>
+            <div id="projectsList" class="grid gap-4"></div>
+          </section>
+
+
+        </form>
+      </main>
+    </div>
+    <script type="module" src="profile.js"></script>
+  </body>
+</html>

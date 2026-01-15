@@ -1,0 +1,133 @@
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.variant-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) 2fr;
+  gap: 16px;
+}
+
+.variant-item {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  background: var(--panel);
+  cursor: pointer;
+}
+
+.variant-item.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.editor-section {
+  margin-bottom: 16px;
+}
+
+.editor-section h3 {
+  margin-bottom: 8px;
+}
+
+.inline-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.template-group {
+  margin-bottom: 16px;
+}
+
+.template-group h4 {
+  margin: 8px 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.template-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.template-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--panel);
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+  justify-content: flex-start;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.template-card.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.preview-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--panel);
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.preview-shell {
+  position: relative;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--accent-soft);
+  min-height: 320px;
+}
+
+.preview-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+  text-align: center;
+  padding: 12px;
+}
+
+.preview-frame {
+  width: 100%;
+  height: 420px;
+  border: none;
+  background: white;
+}
+
+@media (max-width: 900px) {
+  .variant-grid {
+    grid-template-columns: 1fr;
+  }
+}

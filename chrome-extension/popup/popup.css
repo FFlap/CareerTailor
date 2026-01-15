@@ -1,0 +1,94 @@
+body {
+  width: 480px !important;
+  min-width: 480px !important;
+  min-height: 600px;
+}
+
+
+
+#jobDescription {
+  min-height: 120px;
+}
+
+#downloadCard {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+#downloadCard.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.download-actions {
+  margin-top: 10px;
+}
+
+#previewResumeBtn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Dropdown Styles */
+.dropdown {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.dropdown-trigger {
+  width: 100%;
+  justify-content: center;
+}
+
+.dropdown-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  box-shadow: var(--shadow-lg);
+  padding: 4px;
+  z-index: 100;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Open upwards because it's at the bottom of the popup */
+.dropdown-menu {
+  top: auto;
+  bottom: 110%; 
+}
+
+.dropdown-menu.hidden {
+  display: none;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.menu-item:hover {
+  background: var(--bg-app);
+}
+
+.menu-separator {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 4px 0;
+}
+

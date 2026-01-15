@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="../styles/base.css" />
+    <link rel="stylesheet" href="preview.css" />
+    <title>Document Preview</title>
+  </head>
+  <body>
+    <main>
+      <div class="header">
+        <div>
+          <h1 id="previewTitle">Resume Preview</h1>
+          <p class="small" id="previewMeta"></p>
+        </div>
+        <div class="nav-links">
+          <a href="variant.html" target="_blank">Variant Editor ↗</a>
+          <a href="settings.html" target="_blank">Settings ↗</a>
+        </div>
+      </div>
+
+      <section class="card">
+        <div class="preview-toolbar">
+          <div>
+            <button class="secondary" id="refreshPreview">Refresh Preview</button>
+            <button class="primary" id="downloadPreview" disabled>Download PDF</button>
+          </div>
+          <span class="small" id="previewStatus"></span>
+        </div>
+        <div class="preview-shell">
+          <div class="preview-placeholder" id="previewPlaceholder">Preview will appear here.</div>
+          <iframe id="previewFrame" class="preview-frame" title="Document preview"></iframe>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="preview.js"></script>
+  </body>
+</html>

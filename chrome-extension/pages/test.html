@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="../styles/base.css" />
+    <title>Renderer Test</title>
+  </head>
+  <body>
+    <main>
+      <div class="header">
+        <div>
+          <h1>Typst Renderer Test</h1>
+          <p class="small">Uses jakesResume.typst to confirm PDF output.</p>
+        </div>
+        <div class="nav-links">
+          <a href="profile.html">Profile</a>
+          <a href="settings.html">Settings</a>
+        </div>
+      </div>
+
+      <section class="card">
+        <p class="small">This compiles <code>jakesResume.typst</code> with the local Typst WASM bundle.</p>
+        <div class="toolbar">
+          <button class="primary" id="runTest">Render Sample PDF</button>
+          <button class="secondary" id="downloadPdf" disabled>Download PDF</button>
+          <span class="small" id="status"></span>
+        </div>
+        <div class="preview-shell" id="previewShell">
+          <div class="preview-placeholder small" id="previewPlaceholder">PDF preview will appear here.</div>
+          <iframe id="previewFrame" title="PDF preview"></iframe>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="test.js"></script>
+  </body>
+</html>

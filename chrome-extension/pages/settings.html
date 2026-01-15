@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="../styles/base.css" />
+    <link rel="stylesheet" href="settings.css" />
+    <title>Settings</title>
+  </head>
+  <body>
+    <div class="app-layout">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div style="padding: 0 12px; margin-bottom: 32px;">
+          <div style="font-weight: 700; font-size: 20px; display: flex; align-items: center; gap: 10px;">
+            <div style="width: 24px; height: 24px; background: var(--primary); border-radius: 6px;"></div>
+            ResumeGen
+          </div>
+        </div>
+
+        <nav class="nav-menu">
+           <a href="profile.html" class="nav-item">
+            <span>Profile</span>
+          </a>
+          <a href="stats.html" class="nav-item">
+            <span>Stats</span>
+          </a>
+           <a href="settings.html" class="nav-item active">
+            <span>Settings</span>
+          </a>
+        </nav>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <div class="header mb-4">
+          <h1>Settings</h1>
+          <p>Gemini key stays in chrome.storage.local.</p>
+        </div>
+
+        <section class="card">
+          <h2>Gemini API Key</h2>
+          <label for="apiKey">API key</label>
+          <input id="apiKey" type="password" placeholder="Paste your Gemini API key" />
+          <div class="toolbar mt-4">
+            <button class="primary" id="saveKey">Save</button>
+            <button class="secondary" id="validateKey">Validate</button>
+            <span class="small" id="keyStatus"></span>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Generation Defaults</h2>
+          <div class="grid grid-2">
+            <div>
+              <label for="resumeTemplate">Resume template</label>
+              <select id="resumeTemplate"></select>
+            </div>
+            <div>
+              <label for="coverTemplate">Cover template</label>
+              <select id="coverTemplate"></select>
+            </div>
+            <div>
+              <label for="tone">Tone</label>
+              <select id="tone">
+                <option value="professional">Professional</option>
+                <option value="direct">Direct</option>
+                <option value="confident">Confident</option>
+                <option value="warm">Warm</option>
+              </select>
+            </div>
+            <div>
+              <label for="targetLength">Target length</label>
+              <select id="targetLength">
+                <option value="1_page">1 page</option>
+                <option value="2_pages">2 pages</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Renderer</h2>
+          <p class="text-small">Typst WASM is bundled. Use an endpoint for LaTeX if desired.</p>
+          <div class="grid grid-2">
+            <div>
+              <label for="rendererMode">Mode</label>
+              <select id="rendererMode">
+                <option value="wasm">Local WASM</option>
+                <option value="endpoint">External Endpoint</option>
+              </select>
+            </div>
+            <div>
+              <label for="rendererEndpoint">Renderer endpoint</label>
+              <input id="rendererEndpoint" type="url" placeholder="https://renderer.local/compile" />
+            </div>
+          </div>
+          <div class="toolbar mt-4">
+            <button class="primary" id="saveSettings">Save Settings</button>
+            <span class="small" id="settingsStatus"></span>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="settings.js"></script>
+  </body>
+</html>

@@ -1,0 +1,46 @@
+{
+  "name": "@myriaddreamin/typst-ts-web-compiler",
+  "version": "0.7.0-rc2",
+  "description": "WASM module for Compiling Typst documents in JavaScript environment.",
+  "author": "Myriad-Dreamin",
+  "license": "Apache-2.0",
+  "keywords": [
+    "TypeScript",
+    "Typst"
+  ],
+  "type": "module",
+  "module": "./pkg/wasm-pack-shim.mjs",
+  "types": "./pkg/typst_ts_web_compiler.d.ts",
+  "exports": {
+    ".": {
+      "types": "./pkg/typst_ts_web_compiler.d.ts",
+      "default": "./pkg/wasm-pack-shim.mjs"
+    },
+    "./wasm": {
+      "types": "./pkg/typst_ts_web_compiler_bg.wasm.d.ts",
+      "default": "./pkg/typst_ts_web_compiler_bg.wasm"
+    },
+    "./*": [
+      "./*"
+    ]
+  },
+  "files": [
+    "pkg/wasm-pack-shim.mjs",
+    "pkg/typst_ts_web_compiler_bg.wasm",
+    "pkg/typst_ts_web_compiler_bg.wasm.d.ts",
+    "pkg/typst_ts_web_compiler.mjs",
+    "pkg/typst_ts_web_compiler.d.ts"
+  ],
+  "scripts": {
+    "build:dev": "wasm-pack build --target web --scope myriaddreamin --dev -- --no-default-features --features web,misc",
+    "build:node": "wasm-pack build --target nodejs --scope myriaddreamin -- --no-default-features --features web,misc",
+    "build": "wasm-pack build --target web --scope myriaddreamin -- --no-default-features --features web,misc && node ../tools/wasm-debundle.mjs",
+    "build:with-fonts": "wasm-pack build --target web --scope myriaddreamin -- --no-default-features --features web,fonts,misc && node ../tools/wasm-debundle.mjs",
+    "prepublish": "turbo build",
+    "publish:dry": "npm publish --dry-run --access public",
+    "publish:lib": "npm publish --access public || exit 0"
+  },
+  "devDependencies": {
+    "turbo": "^1.10.12"
+  }
+}
