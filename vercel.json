@@ -1,6 +1,6 @@
 {
-  "installCommand": "npm install",
-  "buildCommand": "npm run build",
+  "installCommand": "npm install --prefix app",
+  "buildCommand": "npm run build --prefix app",
   "outputDirectory": "app/dist",
   "framework": null
 }
