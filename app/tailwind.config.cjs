@@ -5,7 +5,8 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        display: ['"Space Grotesk"', 'sans-serif'],
+        display: ['"Playfair Display"', 'serif'],
+        sans: ['"Inter"', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'monospace'],
       },
       borderRadius: {
@@ -14,6 +15,9 @@ module.exports = {
         sm: 'calc(var(--radius) - 4px)',
       },
       colors: {
+        'muted-blue': '#4f81bd',
+        'background-light': '#ffffff',
+        'background-dark': '#0f172a',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {
@@ -25,7 +29,7 @@ module.exports = {
           foreground: 'hsl(var(--popover-foreground))',
         },
         primary: {
-          DEFAULT: 'hsl(var(--primary))',
+          DEFAULT: '#2563eb',
           foreground: 'hsl(var(--primary-foreground))',
         },
         secondary: {

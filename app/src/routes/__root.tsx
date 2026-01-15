@@ -37,7 +37,11 @@ export const Route = createRootRoute({
       },
       {
         rel: 'stylesheet',
-        href: 'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap',
+        href: 'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap',
+      },
+      {
+        rel: 'stylesheet',
+        href: 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap',
       },
       {
         rel: 'stylesheet',
@@ -53,7 +57,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
-  const hideHeader = pathname.startsWith('/editor/')
+  const hideHeader = pathname.startsWith('/editor/') || pathname === '/'
 
   return (
     <ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
