@@ -1,6 +1,6 @@
 import { APP_BASE_URL, CONVEX_URL } from "./common/config.js";
 import { convexMutation } from "./common/convex-http.js";
-import { getAuthToken, getCurrentJob, setCurrentJob } from "./common/storage.js";
+import { clearAuthToken, getAuthToken, getCurrentJob, setCurrentJob } from "./common/storage.js";
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.tabs.create({ url: `${APP_BASE_URL}/onboarding?from=extension` });
@@ -69,6 +69,12 @@ async function syncJobToConvex(job) {
       description: String(job?.description || ""),
       status: "viewed"
     }
+  }).catch(async (error) => {
+    const message = error instanceof Error ? error.message : String(error || "");
+    if (message.includes("Unauthenticated")) {
+      await clearAuthToken();
+      throw new Error("Session expired. Please reconnect your account.");
+    }
+    throw error;
   });
 }
-

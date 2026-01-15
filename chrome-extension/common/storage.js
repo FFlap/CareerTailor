@@ -1,3 +1,5 @@
+import { APP_BASE_URL, CONVEX_URL } from "./config.js";
+
 export function storageGet(keys) {
   return new Promise((resolve) => {
     chrome.storage.local.get(keys, (result) => resolve(result));
@@ -14,17 +16,58 @@ const AUTH_TOKEN_KEY = "convex_auth_token";
 const CURRENT_JOB_KEY = "current_job";
 const CONNECT_STATE_KEY = "connect_state";
 
+function getScopedAuthTokenKey() {
+  return `${AUTH_TOKEN_KEY}:${APP_BASE_URL}|${CONVEX_URL}`;
+}
+
+function decodeJwtPayload(token) {
+  if (!token || typeof token !== "string") return null;
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+    const json = atob(padded);
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+function isJwtExpired(token) {
+  const payload = decodeJwtPayload(token);
+  const exp = typeof payload?.exp === "number" ? payload.exp : 0;
+  if (!exp) return false;
+  const now = Math.floor(Date.now() / 1000);
+  return exp <= now + 30;
+}
+
 export async function getAuthToken() {
-  const result = await storageGet([AUTH_TOKEN_KEY]);
-  return result?.[AUTH_TOKEN_KEY] || "";
+  const scopedKey = getScopedAuthTokenKey();
+  const result = await storageGet([scopedKey, AUTH_TOKEN_KEY]);
+  const scoped = result?.[scopedKey] || "";
+  const legacy = result?.[AUTH_TOKEN_KEY] || "";
+  const token = scoped || legacy || "";
+  if (!token) return "";
+  if (isJwtExpired(token)) {
+    await storageSet({ [scopedKey]: "" });
+    if (legacy) await storageSet({ [AUTH_TOKEN_KEY]: "" });
+    return "";
+  }
+  if (!scoped && legacy) {
+    await storageSet({ [scopedKey]: legacy });
+  }
+  return token;
 }
 
 export async function setAuthToken(token) {
-  await storageSet({ [AUTH_TOKEN_KEY]: token || "" });
+  const scopedKey = getScopedAuthTokenKey();
+  await storageSet({ [scopedKey]: token || "" });
 }
 
 export async function clearAuthToken() {
-  await storageSet({ [AUTH_TOKEN_KEY]: "" });
+  const scopedKey = getScopedAuthTokenKey();
+  await storageSet({ [scopedKey]: "" });
 }
 
 export async function getCurrentJob() {
