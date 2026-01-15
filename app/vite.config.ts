@@ -16,6 +16,9 @@ const config = defineConfig({
     devtools(),
     nitro({
       preset: 'vercel',
+      output: {
+        dir: '../.vercel/output',
+      },
     }),
     // this is the plugin that enables path aliases
     viteTsConfigPaths({
