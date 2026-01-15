@@ -1,8 +1,12 @@
 const SITE_HANDLERS = {
   indeed: {
     titleSelectors: [
+      "h1[data-testid='jobTitle']",
       "h1.jobsearch-JobInfoHeader-title",
       "h1[data-testid='jobsearch-JobInfoHeader-title']",
+      "h1.jobsearch-JobInfoHeader-title span",
+      "h1[data-testid='jobsearch-JobInfoHeader-title'] span",
+      ".jobsearch-JobInfoHeader-title span",
       "h1"
     ],
     companySelectors: [
@@ -135,6 +139,16 @@ function getTextFromSelectors(selectors) {
   return "";
 }
 
+function getMetaContent(selectors) {
+  for (const selector of selectors) {
+    const el = document.querySelector(selector);
+    const content = el?.getAttribute("content") || "";
+    const text = normalizeInlineText(content);
+    if (text) return text;
+  }
+  return "";
+}
+
 function getDescription(selectors) {
   for (const selector of selectors) {
     const el = document.querySelector(selector);
@@ -209,6 +223,21 @@ function getStructuredJobPosting() {
     }
   }
   return null;
+}
+
+function getIndeedTitleFallback() {
+  const metaTitle = getMetaContent([
+    "meta[property='og:title']",
+    "meta[name='twitter:title']",
+    "meta[name='title']"
+  ]);
+  const candidate = metaTitle || document.title || "";
+  if (!candidate) return "";
+  return candidate
+    .replace(/\s+-\s+job post.*$/i, "")
+    .replace(/\s+\|\s*indeed.*$/i, "")
+    .replace(/\s+-\s*indeed.*$/i, "")
+    .trim();
 }
 
 function getLinkedInDetailRoot() {
@@ -329,6 +358,10 @@ function collectJobData() {
     description = detail.description || description;
     jobUrl = detail.jobUrl || "";
     jobId = detail.jobId || getLinkedInJobIdFromUrl();
+  }
+
+  if (siteKey === "indeed" && !title) {
+    title = getIndeedTitleFallback() || title;
   }
 
   if (!jobId) {
