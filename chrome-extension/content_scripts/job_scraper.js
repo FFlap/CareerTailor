@@ -148,9 +148,16 @@ function getDescription(selectors) {
 }
 
 function stripHtml(raw) {
-  const div = document.createElement("div");
-  div.innerHTML = raw;
-  return div.textContent || "";
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(String(raw || ""), "text/html");
+    return doc.body?.textContent || "";
+  } catch {
+    return String(raw || "")
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
 }
 
 function findJobPosting(node) {

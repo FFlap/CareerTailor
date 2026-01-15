@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "ATS Resume Forge",
   "version": "0.1.0",
-  "description": "Generate ATS-friendly resumes and cover letters with Gemini 2.5 Flash.",
+  "description": "Capture job details and generate resumes/cover letters in the ResumeGen web app.",
   "action": {
     "default_title": "ATS Resume Forge",
     "default_popup": "popup/popup.html"
@@ -11,14 +11,14 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "permissions": ["storage", "downloads", "tabs"],
+  "permissions": ["storage", "tabs"],
   "host_permissions": [
     "https://*.indeed.com/*",
     "https://*.linkedin.com/*",
     "https://*.glassdoor.com/*",
-    "https://generativelanguage.googleapis.com/*",
-    "https://cdn.jsdelivr.net/*",
-    "https://packages.typst.org/*"
+    "https://bold-cheetah-58.convex.cloud/*",
+    "http://localhost:*/*",
+    "http://127.0.0.1:*/*"
   ],
   "content_scripts": [
     {
@@ -36,11 +36,13 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "sandbox": {
-    "pages": ["pages/renderer-sandbox.html"]
-  },
+  "web_accessible_resources": [
+    {
+      "resources": ["pages/auth-callback.html", "pages/auth-callback.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; frame-src 'self' blob:; connect-src 'self' https://generativelanguage.googleapis.com https://cdn.jsdelivr.net https://* http://localhost:* http://127.0.0.1:*;",
-    "sandbox": "sandbox allow-scripts; script-src 'self' 'unsafe-eval'; object-src 'self'; connect-src 'self' https://cdn.jsdelivr.net https://packages.typst.org"
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://bold-cheetah-58.convex.cloud http://localhost:* http://127.0.0.1:*;"
   }
 }

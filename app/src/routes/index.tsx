@@ -1,37 +1,40 @@
-import { createFileRoute } from '@tanstack/react-router'
-import '../App.css'
+import { createFileRoute, Link, Navigate } from '@tanstack/react-router'
+import { Authenticated, AuthLoading, Unauthenticated } from 'convex/react'
 
-export const Route = createFileRoute('/')({ component: App })
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
-function App() {
+export const Route = createFileRoute('/')({ component: HomePage })
+
+function HomePage() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img
-          src="/tanstack-circle-logo.png"
-          className="App-logo"
-          alt="TanStack Logo"
-        />
-        <p>
-          Edit <code>src/routes/index.tsx</code> and save to reload.
+    <main className="mx-auto max-w-5xl px-4 py-12">
+      <AuthLoading>
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      </AuthLoading>
+
+      <Authenticated>
+        <Navigate to="/dashboard" />
+      </Authenticated>
+      
+      <Unauthenticated>
+        <h1 className="text-3xl font-semibold tracking-tight">ResumeGen</h1>
+        <p className="mt-2 max-w-prose text-muted-foreground">
+          Generate tailored resumes and cover letters from job posts, then edit
+          in Typst.
         </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-        <a
-          className="App-link"
-          href="https://tanstack.com"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn TanStack
-        </a>
-      </header>
-    </div>
+        <div className="mt-6 flex gap-3">
+          <Link className={buttonVariants()} to="/sign-in">
+            Sign in
+          </Link>
+          <Link
+            className={cn(buttonVariants({ variant: 'outline' }))}
+            to="/sign-up"
+          >
+            Create account
+          </Link>
+        </div>
+      </Unauthenticated>
+    </main>
   )
 }

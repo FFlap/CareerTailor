@@ -16,16 +16,26 @@
              ResumeGen
           </div>
           <div class="nav-links">
-             <a href="../pages/profile.html" target="_blank" style="font-size: 12px; color: var(--primary);">Open App ↗</a>
+             <a href="#" id="openWebApp" target="_blank" rel="noreferrer noopener" style="font-size: 12px; color: var(--primary);">Open Web App ↗</a>
           </div>
         </div>
-        <p class="text-small" style="margin: 0;">Gemini 2.5 Flash • Chrome Storage</p>
+        <p class="text-small" style="margin: 0;">Scrape a job • Generate in the web app</p>
       </div>
+
+      <section class="card">
+        <div class="toolbar">
+          <span class="badge" id="authStatus">Not connected</span>
+          <button class="primary" id="connectBtn">Connect</button>
+        </div>
+        <p class="small" style="margin: 0;">
+          The extension only scrapes job info and syncs it to your account.
+        </p>
+      </section>
 
       <section class="card" id="jobCard">
         <div class="toolbar">
           <span class="badge" id="jobSource">No job detected</span>
-          <button class="ghost" id="openVariant">Variant Editor</button>
+          <button class="ghost" id="refreshJob">Refresh</button>
         </div>
         <div class="grid grid-2">
           <div>
@@ -37,70 +47,15 @@
             <input id="jobCompany" type="text" placeholder="Add company" />
           </div>
         </div>
+        <label for="jobUrl">Job URL</label>
+        <input id="jobUrl" type="text" placeholder="https://..." />
         <label for="jobDescription">Job Description</label>
         <textarea id="jobDescription" placeholder="Paste job description if auto-scrape fails"></textarea>
-      </section>
-
-      <section class="card">
-        <h2>Generation</h2>
-        <div class="grid grid-2">
-          <div>
-            <label for="documentType">Document Type</label>
-            <select id="documentType">
-              <option value="both">Resume + Cover Letter</option>
-              <option value="resume">Resume or CV</option>
-              <option value="cover_letter">Cover Letter</option>
-            </select>
-          </div>
-          <div>
-            <label for="tone">Tone</label>
-            <select id="tone">
-              <option value="professional">Professional</option>
-              <option value="direct">Direct</option>
-              <option value="confident">Confident</option>
-              <option value="warm">Warm</option>
-            </select>
-          </div>
-        </div>
-        <div class="grid grid-2">
-          <div>
-            <label for="resumeTemplate">Resume Template</label>
-            <select id="resumeTemplate"></select>
-          </div>
-          <div>
-            <label for="coverTemplate">Cover Letter Template</label>
-            <select id="coverTemplate"></select>
-          </div>
-        </div>
-        <label for="targetLength">Target Length</label>
-        <select id="targetLength">
-          <option value="1_page">1 page</option>
-          <option value="2_pages">2 pages</option>
-        </select>
         <div class="toolbar">
-          <button class="primary" id="generateBtn">Generate with Gemini</button>
-          <span class="small" id="statusText"></span>
+          <button class="secondary" id="syncBtn">Sync Job</button>
+          <button class="primary" id="generateInAppBtn">Generate in Web App</button>
         </div>
-      </section>
-
-      <section class="card" id="downloadCard">
-        <h2>Downloads</h2>
-        <p class="small">PDF rendering uses local Typst WASM or your custom renderer endpoint.</p>
-        <div class="toolbar" style="position: relative;">
-          <div class="dropdown">
-            <button class="primary dropdown-trigger" id="downloadTrigger">Download ▾</button>
-            <div class="dropdown-menu hidden" id="downloadMenu">
-              <button class="menu-item" id="downloadResumePdf">Resume PDF</button>
-              <button class="menu-item" id="downloadCoverPdf">Cover Letter PDF</button>
-              <div class="menu-separator"></div>
-              <button class="menu-item" id="downloadResumeSource">Resume Source (.typ)</button>
-              <button class="menu-item" id="downloadCoverSource">Cover Letter Source (.typ)</button>
-            </div>
-          </div>
-        </div>
-        <div class="toolbar download-actions">
-          <button class="secondary" id="previewResumeBtn" disabled>Preview Resume</button>
-        </div>
+        <span class="small" id="statusText"></span>
       </section>
     </main>
     <script type="module" src="popup.js"></script>

@@ -1,27 +1,33 @@
 import { Link } from '@tanstack/react-router'
-
-import './Header.css'
+import { SignedIn, SignedOut, UserButton } from '@clerk/tanstack-start'
 
 export default function Header() {
   return (
-    <header className="header">
-      <nav className="nav">
-        <div className="nav-item">
-          <Link to="/">Home</Link>
-        </div>
+    <header className="border-b">
+      <div className="mx-auto flex h-14 max-w-5xl items-center gap-4 px-4">
+        <Link to="/" className="font-semibold tracking-tight">
+          ResumeGen
+        </Link>
+        <SignedIn>
+          <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
+            Dashboard
+          </Link>
+          <Link to="/generate" className="text-sm text-muted-foreground hover:text-foreground">
+            Generate
+          </Link>
+        </SignedIn>
 
-        <div className="px-2 font-bold">
-          <Link to="/demo/start/server-funcs">Start - Server Functions</Link>
+        <div className="ml-auto">
+          <SignedIn>
+            <UserButton />
+          </SignedIn>
+          <SignedOut>
+            <Link to="/sign-in" className="text-sm text-muted-foreground hover:text-foreground">
+              Sign in
+            </Link>
+          </SignedOut>
         </div>
-
-        <div className="px-2 font-bold">
-          <Link to="/demo/start/api-request">Start - API Request</Link>
-        </div>
-
-        <div className="px-2 font-bold">
-          <Link to="/demo/start/ssr">Start - SSR Demos</Link>
-        </div>
-      </nav>
+      </div>
     </header>
   )
 }

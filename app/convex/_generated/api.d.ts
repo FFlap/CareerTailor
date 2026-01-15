@@ -8,7 +8,15 @@
  * @module
  */
 
-import type * as users from "../users.js";
+import type * as documents from "../documents.js";
+import type * as generation from "../generation.js";
+import type * as jobs from "../jobs.js";
+import type * as lib_auth from "../lib/auth.js";
+import type * as lib_openrouter from "../lib/openrouter.js";
+import type * as lib_openrouterModels from "../lib/openrouterModels.js";
+import type * as lib_templates from "../lib/templates.js";
+import type * as profiles from "../profiles.js";
+import type * as settings from "../settings.js";
 
 import type {
   ApiFromModules,
@@ -17,7 +25,15 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  users: typeof users;
+  documents: typeof documents;
+  generation: typeof generation;
+  jobs: typeof jobs;
+  "lib/auth": typeof lib_auth;
+  "lib/openrouter": typeof lib_openrouter;
+  "lib/openrouterModels": typeof lib_openrouterModels;
+  "lib/templates": typeof lib_templates;
+  profiles: typeof profiles;
+  settings: typeof settings;
 }>;
 
 /**

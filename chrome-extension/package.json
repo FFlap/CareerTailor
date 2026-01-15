@@ -1,11 +1,5 @@
 {
   "name": "ats-resume-forge-extension",
   "private": true,
-  "type": "module",
-  "scripts": {
-    "playwright:scrape": "node scripts/playwright-job-scrape.mjs"
-  },
-  "devDependencies": {
-    "playwright": "^1.57.0"
-  }
+  "type": "module"
 }
