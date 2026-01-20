@@ -92,7 +92,7 @@ export const generateDocuments = action({
           'Preserve the original structure and values as much as possible.',
         ].join('\n')
         const repaired = await callOpenRouterChat({
-          apiKey: openRouterKey,
+          apiKey: openRouterKey!,
           model: args.model,
           messages: [
             { role: 'system', content: 'You fix invalid JSON.' },

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { Authenticated, AuthLoading, Unauthenticated, useMutation, useQuery } from 'convex/react'
+import { Authenticated, AuthLoading, Unauthenticated, useAction, useMutation, useQuery } from 'convex/react'
 import { useEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/lib/convex'
+import { extractTextFromResume } from '@/lib/extractText'
+import { isAcceptedMimeType, type ResumeUploadState } from '@/lib/resumeUpload'
 
 export const Route = createFileRoute('/onboarding')({
   component: OnboardingPage,
@@ -77,12 +79,57 @@ function OnboardingPage() {
   )
 }
 
+// Merge parsed resume data into profile, preserving existing non-empty values
+function mergeProfileData(existing: ProfileDraft, parsed: unknown): ProfileDraft {
+  const p = parsed as Partial<ProfileDraft>
+  return {
+    personal: {
+      fullName: p.personal?.fullName || existing.personal.fullName,
+      email: p.personal?.email || existing.personal.email,
+      phone: p.personal?.phone || existing.personal.phone,
+      location: p.personal?.location || existing.personal.location,
+      links: p.personal?.links?.length ? p.personal.links : existing.personal.links,
+    },
+    summary: p.summary || existing.summary,
+    education: p.education?.length ? p.education.map((edu) => ({
+      degree: edu.degree || '',
+      major: edu.major || '',
+      institution: edu.institution || '',
+      location: edu.location || '',
+      startDate: edu.startDate || '',
+      endDate: edu.endDate || '',
+      bullets: edu.bullets || [],
+    })) : existing.education,
+    experience: p.experience?.length ? p.experience.map((exp) => ({
+      title: exp.title || '',
+      company: exp.company || '',
+      location: exp.location || '',
+      startDate: exp.startDate || '',
+      endDate: exp.endDate || '',
+      bullets: exp.bullets || [],
+    })) : existing.experience,
+    skills: p.skills?.length ? p.skills.map((skill) => ({
+      category: skill.category || '',
+      items: skill.items || [],
+    })) : existing.skills,
+    projects: p.projects?.length ? p.projects.map((proj) => ({
+      name: proj.name || '',
+      technologies: proj.technologies || [],
+      link: proj.link || '',
+      bullets: proj.bullets || [],
+    })) : existing.projects,
+  }
+}
+
 function OnboardingContent() {
   const profileDoc = useQuery(api.profiles.myProfile, {})
   const upsert = useMutation(api.profiles.upsertMyProfile)
+  const parseResume = useAction(api.resumeParsing.parseResumeText)
   const [profile, setProfile] = useState<ProfileDraft>(EMPTY_PROFILE)
   const [status, setStatus] = useState<string>('')
+  const [uploadState, setUploadState] = useState<ResumeUploadState>({ status: 'idle' })
   const initialized = useRef(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (profileDoc === undefined || initialized.current) return
@@ -101,13 +148,83 @@ function OnboardingContent() {
     }
   }
 
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // MIME type validation
+    if (!isAcceptedMimeType(file.type)) {
+      setUploadState({
+        status: 'error',
+        fileName: file.name,
+        error: 'Please upload a PDF or DOCX file',
+      })
+      return
+    }
+
+    try {
+      setUploadState({ status: 'extracting', fileName: file.name })
+      const text = await extractTextFromResume(file)
+
+      setUploadState({ status: 'parsing', fileName: file.name })
+      const parsed = await parseResume({ resumeText: text, model: 'xiaomi/mimo-v2-flash:free' })
+
+      // Merge parsed data into profile state
+      setProfile((prev) => mergeProfileData(prev, parsed))
+      setUploadState({ status: 'success', fileName: file.name })
+    } catch (error) {
+      setUploadState({
+        status: 'error',
+        fileName: file.name,
+        error: error instanceof Error ? error.message : 'Failed to parse resume',
+      })
+    }
+
+    // Reset file input so same file can be uploaded again if needed
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
   return (
     <>
       <h1 className="text-2xl font-semibold tracking-tight">Onboarding</h1>
+
+      {/* Resume Upload Section */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Upload Existing Resume</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Upload your current resume to auto-fill the form below.
+          </p>
+          <div className="flex items-center gap-4">
+            <Input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              onChange={handleFileUpload}
+              disabled={uploadState.status === 'extracting' || uploadState.status === 'parsing'}
+              className="max-w-xs"
+            />
+            {uploadState.status !== 'idle' && (
+              <span className={`text-sm ${uploadState.status === 'error' ? 'text-destructive' : uploadState.status === 'success' ? 'text-green-600' : 'text-muted-foreground'}`}>
+                {uploadState.status === 'extracting' && 'Extracting text...'}
+                {uploadState.status === 'parsing' && 'Parsing with AI...'}
+                {uploadState.status === 'success' && 'Form filled!'}
+                {uploadState.status === 'error' && uploadState.error}
+              </span>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Resume Details Form */}
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>Resume Details</CardTitle>
-          </CardHeader>
+        </CardHeader>
           <CardContent className="space-y-6">
             {profileDoc === undefined ? (
               <p className="text-sm text-muted-foreground">Loading…</p>
