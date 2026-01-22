@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TemplatesRouteImport } from './routes/templates'
 import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
@@ -19,6 +20,11 @@ import { Route as ExtensionConnectRouteImport } from './routes/extension.connect
 import { Route as EditorDocumentIdRouteImport } from './routes/editor.$documentId'
 import { Route as ApiRenderTypstRouteImport } from './routes/api.render.typst'
 
+const TemplatesRoute = TemplatesRouteImport.update({
+  id: '/templates',
+  path: '/templates',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignUpRoute = SignUpRouteImport.update({
   id: '/sign-up',
   path: '/sign-up',
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/templates': typeof TemplatesRoute
   '/editor/$documentId': typeof EditorDocumentIdRoute
   '/extension/connect': typeof ExtensionConnectRoute
   '/api/render/typst': typeof ApiRenderTypstRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/templates': typeof TemplatesRoute
   '/editor/$documentId': typeof EditorDocumentIdRoute
   '/extension/connect': typeof ExtensionConnectRoute
   '/api/render/typst': typeof ApiRenderTypstRoute
@@ -95,6 +103,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/templates': typeof TemplatesRoute
   '/editor/$documentId': typeof EditorDocumentIdRoute
   '/extension/connect': typeof ExtensionConnectRoute
   '/api/render/typst': typeof ApiRenderTypstRoute
@@ -108,6 +117,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/sign-in'
     | '/sign-up'
+    | '/templates'
     | '/editor/$documentId'
     | '/extension/connect'
     | '/api/render/typst'
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/sign-in'
     | '/sign-up'
+    | '/templates'
     | '/editor/$documentId'
     | '/extension/connect'
     | '/api/render/typst'
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/sign-in'
     | '/sign-up'
+    | '/templates'
     | '/editor/$documentId'
     | '/extension/connect'
     | '/api/render/typst'
@@ -142,6 +154,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
+  TemplatesRoute: typeof TemplatesRoute
   EditorDocumentIdRoute: typeof EditorDocumentIdRoute
   ExtensionConnectRoute: typeof ExtensionConnectRoute
   ApiRenderTypstRoute: typeof ApiRenderTypstRoute
@@ -149,6 +162,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/templates': {
+      id: '/templates'
+      path: '/templates'
+      fullPath: '/templates'
+      preLoaderRoute: typeof TemplatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sign-up': {
       id: '/sign-up'
       path: '/sign-up'
@@ -222,6 +242,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
+  TemplatesRoute: TemplatesRoute,
   EditorDocumentIdRoute: EditorDocumentIdRoute,
   ExtensionConnectRoute: ExtensionConnectRoute,
   ApiRenderTypstRoute: ApiRenderTypstRoute,

@@ -36,7 +36,7 @@ export default function Header() {
             <div className="hidden md:flex space-x-4">
               <Link to="/dashboard" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-primary dark:text-slate-400 [&.active]:bg-primary/10 [&.active]:text-primary">Dashboard</Link>
               <Link to="/generate" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-primary dark:text-slate-400 [&.active]:bg-primary/10 [&.active]:text-primary">Generate</Link>
-              <a href="#" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-primary dark:text-slate-400">Templates</a>
+              <Link to="/templates" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-primary dark:text-slate-400 [&.active]:bg-primary/10 [&.active]:text-primary">Templates</Link>
             </div>
           </div>
           

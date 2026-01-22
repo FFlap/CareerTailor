@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as customTemplates from "../customTemplates.js";
 import type * as documents from "../documents.js";
 import type * as generation from "../generation.js";
 import type * as jobs from "../jobs.js";
@@ -26,6 +27,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  customTemplates: typeof customTemplates;
   documents: typeof documents;
   generation: typeof generation;
   jobs: typeof jobs;

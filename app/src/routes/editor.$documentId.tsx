@@ -113,6 +113,13 @@ function EditorContent() {
     return trimmed.split(/\s+/).filter(Boolean).length
   }, [source])
 
+  const templateLabel = useMemo(() => {
+    if (!doc?.templateId) return 'Custom'
+    return doc.templateId.startsWith('custom:')
+      ? 'Custom Template'
+      : doc.templateId.replace(/-/g, ' ')
+  }, [doc?.templateId])
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 's') {
       e.preventDefault()
@@ -242,7 +249,7 @@ function EditorContent() {
              {/* Preview Footer */}
              <div className="flex h-10 shrink-0 items-center justify-between border-t border-black/5 px-6 text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:border-white/5">
                 <div>UTF-8</div>
-                <div>{doc?.templateId?.replace(/-/g, ' ') || 'Custom'}</div>
+                <div>{templateLabel}</div>
             </div>
           </section>
         </div>

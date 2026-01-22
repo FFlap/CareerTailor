@@ -8,6 +8,8 @@ import { openRouterModelIdValidator } from './lib/openrouterModels'
 import {
   buildCoverLetterTypstSource,
   buildResumeTypstSource,
+  buildCustomCoverLetterTypstSource,
+  buildCustomResumeTypstSource,
   coverTemplateIdValidator,
   resumeTemplateIdValidator,
 } from './lib/templates'
@@ -31,6 +33,7 @@ const upsertMyJobRef = makeFunctionReference<'mutation'>('jobs:upsertMyJob')
 const createGeneratedDocumentRef = makeFunctionReference<'mutation'>(
   'documents:createGeneratedDocument',
 )
+const getMyTemplateRef = makeFunctionReference<'query'>('customTemplates:getMyTemplate')
 
 export const generateDocuments = action({
   args: {
@@ -42,6 +45,8 @@ export const generateDocuments = action({
     ),
     resumeTemplateId: resumeTemplateIdValidator,
     coverTemplateId: coverTemplateIdValidator,
+    customResumeTemplateId: v.optional(v.id('customTemplates')),
+    customCoverTemplateId: v.optional(v.id('customTemplates')),
     model: openRouterModelIdValidator,
     preferences: preferencesInput,
   },
@@ -106,6 +111,17 @@ export const generateDocuments = action({
     }
 
     if (args.documentType === 'resume' || args.documentType === 'both') {
+      let customResumeSource: string | null = null
+      if (args.customResumeTemplateId) {
+        const customTemplate = await ctx.runQuery(getMyTemplateRef, {
+          templateId: args.customResumeTemplateId,
+        })
+        if (!customTemplate || customTemplate.type !== 'resume') {
+          throw new Error('Custom resume template not found.')
+        }
+        customResumeSource = customTemplate.source
+      }
+
       const prompt = [
         'You are an expert ATS resume writer.',
         'Return ONLY valid JSON (no markdown, no code fences).',
@@ -171,16 +187,24 @@ export const generateDocuments = action({
       const parsed = (await parseJsonWithRepair(raw, 4096)) as any
       const resume = parsed?.resume ?? parsed
 
-      const typstSource = buildResumeTypstSource({
-        templateId: args.resumeTemplateId,
-        resume,
-        profile,
-      })
+      const typstSource = customResumeSource
+        ? buildCustomResumeTypstSource({
+            templateSource: customResumeSource,
+            resume,
+            profile,
+          })
+        : buildResumeTypstSource({
+            templateId: args.resumeTemplateId,
+            resume,
+            profile,
+          })
 
       const resumeDocId = await ctx.runMutation(createGeneratedDocumentRef, {
         jobId,
         type: 'resume',
-        templateId: args.resumeTemplateId,
+        templateId: customResumeSource
+          ? `custom:${args.customResumeTemplateId}`
+          : args.resumeTemplateId,
         llmModel: args.model,
         tone: args.preferences.tone,
         targetLength: args.preferences.targetLength,
@@ -192,6 +216,17 @@ export const generateDocuments = action({
     }
 
     if (args.documentType === 'cover_letter' || args.documentType === 'both') {
+      let customCoverSource: string | null = null
+      if (args.customCoverTemplateId) {
+        const customTemplate = await ctx.runQuery(getMyTemplateRef, {
+          templateId: args.customCoverTemplateId,
+        })
+        if (!customTemplate || customTemplate.type !== 'cover_letter') {
+          throw new Error('Custom cover letter template not found.')
+        }
+        customCoverSource = customTemplate.source
+      }
+
       const prompt = [
         'You are an expert cover letter writer.',
         'Return ONLY valid JSON (no markdown, no code fences).',
@@ -224,17 +259,26 @@ export const generateDocuments = action({
       const parsed = (await parseJsonWithRepair(raw, 2048)) as any
       const coverLetter = parsed?.cover_letter ?? parsed
 
-      const typstSource = buildCoverLetterTypstSource({
-        templateId: args.coverTemplateId,
-        coverLetter,
-        profile,
-        job: args.job,
-      })
+      const typstSource = customCoverSource
+        ? buildCustomCoverLetterTypstSource({
+            templateSource: customCoverSource,
+            coverLetter,
+            profile,
+            job: args.job,
+          })
+        : buildCoverLetterTypstSource({
+            templateId: args.coverTemplateId,
+            coverLetter,
+            profile,
+            job: args.job,
+          })
 
       const coverDocId = await ctx.runMutation(createGeneratedDocumentRef, {
         jobId,
         type: 'cover_letter',
-        templateId: args.coverTemplateId,
+        templateId: customCoverSource
+          ? `custom:${args.customCoverTemplateId}`
+          : args.coverTemplateId,
         llmModel: args.model,
         tone: args.preferences.tone,
         targetLength: args.preferences.targetLength,

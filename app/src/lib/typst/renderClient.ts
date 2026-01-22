@@ -83,6 +83,9 @@ async function getAssetBytes(assetRel: string): Promise<Uint8Array> {
 }
 
 function getTemplateMeta(input: RenderInput): TemplateMeta {
+  if (input.templateId.startsWith('custom:')) {
+    return { entryPath: 'templates/custom/main.typ', assets: [] }
+  }
   if (input.documentType === 'resume') {
     const tmpl = (RESUME_TEMPLATES as Record<string, TemplateMeta>)[input.templateId]
     if (!tmpl) throw new Error('Unknown templateId.')

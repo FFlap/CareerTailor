@@ -235,6 +235,20 @@ function typstTuple(items: Array<string | null | undefined> = []) {
   return `(${safe.join(', ')})`
 }
 
+function typstExprTuple(items: string[] = []) {
+  if (!items.length) return '()'
+  if (items.length === 1) return `(${items[0]},)`
+  return `(${items.join(', ')})`
+}
+
+function typstDict(entries: Record<string, string>) {
+  const parts = Object.entries(entries)
+    .filter(([, value]) => value !== '')
+    .map(([key, value]) => `${key}: ${value}`)
+  if (!parts.length) return '()'
+  return `(${parts.join(', ')})`
+}
+
 function formatDateRangeText(start: string, end: string) {
   return formatDateRange(start || '', end || '')
 }
@@ -1106,4 +1120,172 @@ export function buildCoverLetterTypstSource({
   }
   ;(templateId satisfies never)
   throw new Error('Template not implemented.')
+}
+
+function buildResumeDataPreamble(resume: any, profile: any) {
+  const safeResume = resume || {}
+  const safeProfile = profile || {}
+  const header = getHeader(safeResume, safeProfile)
+  const links = normalizeLinks(header.links)
+  const linkTuple = typstExprTuple(
+    links.map((link) =>
+      typstDict({
+        label: typstString(link.label || ''),
+        url: typstString(link.url || ''),
+      }),
+    ),
+  )
+
+  const skills = normalizeSkillGroups(safeResume.skills ?? safeProfile.skills)
+  const skillsTuple = typstExprTuple(
+    skills.map((group) =>
+      typstDict({
+        category: typstString(group.category || ''),
+        items: typstTuple(group.items || []),
+      }),
+    ),
+  )
+
+  const experience = Array.isArray(safeResume.experience)
+    ? safeResume.experience
+    : Array.isArray(safeProfile.experience)
+      ? safeProfile.experience
+      : []
+  const experienceTuple = typstExprTuple(
+    experience.map((item: any) =>
+      typstDict({
+        title: typstString(item?.title || ''),
+        company: typstString(item?.company || ''),
+        location: typstString(item?.location || ''),
+        start: typstString(item?.startDate || ''),
+        end: typstString(item?.endDate || ''),
+        bullets: typstTuple(item?.bullets || []),
+      }),
+    ),
+  )
+
+  const projects = Array.isArray(safeResume.projects)
+    ? safeResume.projects
+    : Array.isArray(safeProfile.projects)
+      ? safeProfile.projects
+      : []
+  const projectsTuple = typstExprTuple(
+    projects.map((project: any) =>
+      typstDict({
+        name: typstString(project?.name || ''),
+        technologies: typstTuple(project?.technologies || []),
+        link: typstString(project?.link || ''),
+        bullets: typstTuple(project?.bullets || []),
+      }),
+    ),
+  )
+
+  const education = Array.isArray(safeResume.education)
+    ? safeResume.education
+    : Array.isArray(safeProfile.education)
+      ? safeProfile.education
+      : []
+  const educationTuple = typstExprTuple(
+    education.map((item: any) =>
+      typstDict({
+        degree: typstString(item?.degree || ''),
+        major: typstString(item?.major || ''),
+        institution: typstString(item?.institution || ''),
+        location: typstString(item?.location || ''),
+        start: typstString(item?.startDate || ''),
+        end: typstString(item?.endDate || ''),
+      }),
+    ),
+  )
+
+  const summary = safeResume.summary || safeProfile.summary || ''
+
+  const headerDict = typstDict({
+    name: typstString(header.name || ''),
+    email: typstString(header.email || ''),
+    phone: typstString(header.phone || ''),
+    location: typstString(header.location || ''),
+    links: linkTuple,
+  })
+
+  return [
+    '#let resume = (',
+    `  header: ${headerDict},`,
+    `  summary: ${typstString(summary)},`,
+    `  skills: ${skillsTuple},`,
+    `  experience: ${experienceTuple},`,
+    `  projects: ${projectsTuple},`,
+    `  education: ${educationTuple},`,
+    ')',
+    '',
+  ].join('\n')
+}
+
+function buildCoverLetterDataPreamble(coverLetter: any, profile: any, job: any) {
+  const safeCover = coverLetter || {}
+  const header = getHeader({}, profile || {})
+  const links = normalizeLinks(header.links)
+  const linkTuple = typstExprTuple(
+    links.map((link) =>
+      typstDict({
+        label: typstString(link.label || ''),
+        url: typstString(link.url || ''),
+      }),
+    ),
+  )
+
+  const senderDict = typstDict({
+    name: typstString(header.name || ''),
+    email: typstString(header.email || ''),
+    phone: typstString(header.phone || ''),
+    location: typstString(header.location || ''),
+    links: linkTuple,
+  })
+
+  const coverDict = typstDict({
+    greeting: typstString(safeCover.greeting || 'Dear Hiring Manager,'),
+    body_paragraphs: typstTuple(
+      Array.isArray(safeCover.body_paragraphs) ? safeCover.body_paragraphs : [],
+    ),
+    closing: typstString(safeCover.closing || 'Sincerely,'),
+    signature_name: typstString(safeCover.signature_name || header.name || ''),
+    recipient_name: typstString(safeCover.recipient_name || ''),
+    recipient_title: typstString(safeCover.recipient_title || ''),
+    company_name: typstString(job?.company || ''),
+    job_title: typstString(job?.title || ''),
+  })
+
+  return [
+    `#let sender = ${senderDict}`,
+    `#let cover_letter = ${coverDict}`,
+    '',
+  ].join('\n')
+}
+
+export function buildCustomResumeTypstSource({
+  templateSource,
+  resume,
+  profile,
+}: {
+  templateSource: string
+  resume: any
+  profile: any
+}) {
+  const preamble = buildResumeDataPreamble(resume, profile)
+  return `${preamble}\\n${templateSource}`.trim()
+}
+
+export function buildCustomCoverLetterTypstSource({
+  templateSource,
+  coverLetter,
+  profile,
+  job,
+}: {
+  templateSource: string
+  coverLetter: any
+  profile: any
+  job: any
+}) {
+  const preamble = buildCoverLetterDataPreamble(coverLetter, profile, job)
+  return `${preamble}\\n${templateSource}`.trim()
 }

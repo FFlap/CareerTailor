@@ -97,4 +97,16 @@ export default defineSchema({
     defaultModel: v.string(),
     updatedAt: v.number(),
   }).index('by_user', ['userId']),
+
+  customTemplates: defineTable({
+    userId: v.string(),
+    name: v.string(),
+    type: v.union(v.literal('resume'), v.literal('cover_letter')),
+    source: v.string(),
+    origin: v.optional(v.union(v.literal('typst'), v.literal('image'))),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_user_updatedAt', ['userId', 'updatedAt'])
+    .index('by_user_type', ['userId', 'type']),
 })
