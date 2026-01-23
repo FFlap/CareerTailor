@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { createPortal } from 'react-dom'
 import {
   Authenticated,
   AuthLoading,
@@ -216,10 +217,10 @@ function TemplatePickerModal({
           badge: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-200',
         }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-8 backdrop-blur-sm">
-      <div className="w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 px-4 py-8 backdrop-blur-md">
+      <div className="flex max-h-[95vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
           <div className="flex items-center gap-3">
             <span className={`rounded-full px-3 py-1 text-xs font-semibold ${accentClasses.badge}`}>
               {documentType === 'resume' ? 'Resume' : 'Cover Letter'}
@@ -236,7 +237,7 @@ function TemplatePickerModal({
           </button>
         </div>
 
-        <div className="grid gap-6 p-6 lg:grid-cols-[1fr_1.2fr]">
+        <div className="grid gap-6 overflow-y-auto p-6 lg:grid-cols-[1fr_1.2fr]">
           <div className="space-y-4">
             <p className="text-sm text-slate-500 dark:text-slate-400">
               Choose a template to preview before applying it.
@@ -293,7 +294,7 @@ function TemplatePickerModal({
               <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Preview</h4>
               {status && <span className="text-xs text-slate-500">{status}</span>}
             </div>
-            <div className="typst-preview min-h-[520px] w-full overflow-hidden rounded-xl bg-white shadow-inner dark:bg-slate-950">
+            <div className="typst-preview h-[550px] w-full overflow-y-auto rounded-xl bg-white shadow-inner scrollbar-thin scrollbar-track-transparent scrollbar-thumb-slate-200 dark:bg-slate-950 dark:scrollbar-thumb-slate-700">
               <div ref={previewRef} className="w-full" />
             </div>
           </div>
@@ -318,7 +319,8 @@ function TemplatePickerModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
