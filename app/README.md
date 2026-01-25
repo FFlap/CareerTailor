@@ -1,4 +1,4 @@
-# ResumeGen (Web App)
+# CareerTailor (Web App)
 
 The web app handles authentication (Clerk), data + syncing (Convex), document generation (OpenRouter), and Typst editing/rendering. The Chrome extension only scrapes job details from the current tab and redirects here for generation.
 

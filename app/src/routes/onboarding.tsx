@@ -670,7 +670,7 @@ function OnboardingContent() {
                               <Input value={proj.name} onChange={(e) => {
                                  const next = [...profile.projects]; next[idx].name = e.target.value;
                                  setProfile(p => ({...p, projects: next}));
-                              }} className="bg-white dark:bg-slate-950" placeholder="e.g. ResumeGen" />
+                              }} className="bg-white dark:bg-slate-950" placeholder="e.g. CareerTailor" />
                            </div>
                            <div className="space-y-2">
                                <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Project Link</Label>

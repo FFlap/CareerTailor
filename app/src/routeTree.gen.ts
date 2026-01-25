@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TemplatesRouteImport } from './routes/templates'
 import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as RoastRouteImport } from './routes/roast'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as JobApplicationsRouteImport } from './routes/job-applications'
 import { Route as GenerateRouteImport } from './routes/generate'
@@ -35,6 +36,11 @@ const SignUpRoute = SignUpRouteImport.update({
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RoastRoute = RoastRouteImport.update({
+  id: '/roast',
+  path: '/roast',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardingRoute = OnboardingRouteImport.update({
@@ -90,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/generate': typeof GenerateRoute
   '/job-applications': typeof JobApplicationsRoute
   '/onboarding': typeof OnboardingRoute
+  '/roast': typeof RoastRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/templates': typeof TemplatesRoute
@@ -104,6 +111,7 @@ export interface FileRoutesByTo {
   '/generate': typeof GenerateRoute
   '/job-applications': typeof JobApplicationsRoute
   '/onboarding': typeof OnboardingRoute
+  '/roast': typeof RoastRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/templates': typeof TemplatesRoute
@@ -119,6 +127,7 @@ export interface FileRoutesById {
   '/generate': typeof GenerateRoute
   '/job-applications': typeof JobApplicationsRoute
   '/onboarding': typeof OnboardingRoute
+  '/roast': typeof RoastRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/templates': typeof TemplatesRoute
@@ -135,6 +144,7 @@ export interface FileRouteTypes {
     | '/generate'
     | '/job-applications'
     | '/onboarding'
+    | '/roast'
     | '/sign-in'
     | '/sign-up'
     | '/templates'
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
     | '/generate'
     | '/job-applications'
     | '/onboarding'
+    | '/roast'
     | '/sign-in'
     | '/sign-up'
     | '/templates'
@@ -163,6 +174,7 @@ export interface FileRouteTypes {
     | '/generate'
     | '/job-applications'
     | '/onboarding'
+    | '/roast'
     | '/sign-in'
     | '/sign-up'
     | '/templates'
@@ -178,6 +190,7 @@ export interface RootRouteChildren {
   GenerateRoute: typeof GenerateRoute
   JobApplicationsRoute: typeof JobApplicationsRoute
   OnboardingRoute: typeof OnboardingRoute
+  RoastRoute: typeof RoastRoute
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
   TemplatesRoute: typeof TemplatesRoute
@@ -207,6 +220,13 @@ declare module '@tanstack/react-router' {
       path: '/sign-in'
       fullPath: '/sign-in'
       preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/roast': {
+      id: '/roast'
+      path: '/roast'
+      fullPath: '/roast'
+      preLoaderRoute: typeof RoastRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboarding': {
@@ -282,6 +302,7 @@ const rootRouteChildren: RootRouteChildren = {
   GenerateRoute: GenerateRoute,
   JobApplicationsRoute: JobApplicationsRoute,
   OnboardingRoute: OnboardingRoute,
+  RoastRoute: RoastRoute,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
   TemplatesRoute: TemplatesRoute,

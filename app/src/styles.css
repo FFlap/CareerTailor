@@ -1,3 +1,4 @@
+@import "pdfjs-dist/web/pdf_viewer.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -124,5 +125,22 @@
   .typst-preview canvas {
     display: block;
     background: #ffffff;
+  }
+
+  .roast-pdf-page {
+    position: relative;
+  }
+
+  .roast-pdf-page canvas {
+    display: block;
+  }
+
+  .roast-highlight {
+    background: rgba(251, 191, 36, 0.6);
+  }
+
+  .roast-highlight-active {
+    outline: 2px solid #f59e0b;
+    outline-offset: -1px;
   }
 }

@@ -18,6 +18,7 @@ import type * as lib_openrouterModels from "../lib/openrouterModels.js";
 import type * as lib_templates from "../lib/templates.js";
 import type * as profiles from "../profiles.js";
 import type * as resumeParsing from "../resumeParsing.js";
+import type * as roast from "../roast.js";
 import type * as settings from "../settings.js";
 
 import type {
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   "lib/templates": typeof lib_templates;
   profiles: typeof profiles;
   resumeParsing: typeof resumeParsing;
+  roast: typeof roast;
   settings: typeof settings;
 }>;
 

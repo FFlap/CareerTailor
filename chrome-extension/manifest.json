@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "ATS Resume Forge",
   "version": "0.1.0",
-  "description": "Capture job details and generate resumes/cover letters in the ResumeGen web app.",
+  "description": "Capture job details and generate resumes/cover letters in the CareerTailor web app.",
   "action": {
     "default_title": "ATS Resume Forge",
     "default_popup": "popup/popup.html"

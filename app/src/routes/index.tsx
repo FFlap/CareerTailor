@@ -23,7 +23,7 @@ function HomePage() {
         <nav className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-primary text-3xl">description</span>
-            <span className="text-xl font-bold tracking-tight">Resume<span className="text-primary">Gen</span></span>
+            <span className="text-xl font-bold tracking-tight">Career<span className="text-primary">Tailor</span></span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600 dark:text-slate-400">
             <a className="hover:text-primary transition-colors" href="#">Features</a>
@@ -251,7 +251,7 @@ function HomePage() {
           <div>
             <div className="flex items-center gap-2 mb-6">
               <span className="material-symbols-outlined text-primary text-3xl">description</span>
-              <span className="text-xl font-bold tracking-tight">Resume<span className="text-primary">Gen</span></span>
+              <span className="text-xl font-bold tracking-tight">Career<span className="text-primary">Tailor</span></span>
             </div>
             <p className="text-slate-400 max-w-sm">Building the future of recruitment, one resume at a time. Join over 200,000 successful job seekers.</p>
           </div>
@@ -285,7 +285,7 @@ function HomePage() {
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-6 mt-16 pt-8 border-t border-slate-800 text-slate-500 text-sm flex justify-between">
-          <p>© 2024 ResumeGen AI. All rights reserved.</p>
+          <p>© 2024 CareerTailor AI. All rights reserved.</p>
           <div className="flex gap-6">
             <a className="hover:text-white" href="#">Privacy</a>
             <a className="hover:text-white" href="#">Terms</a>

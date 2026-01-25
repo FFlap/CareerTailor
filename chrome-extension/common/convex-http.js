@@ -23,7 +23,7 @@ export async function convexMutation({ convexUrl, authToken, path, args }) {
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${authToken}`,
-      "Convex-Client": "resumegen-extension"
+      "Convex-Client": "careertailor-extension"
     },
     body: JSON.stringify({
       path,
@@ -33,4 +33,3 @@ export async function convexMutation({ convexUrl, authToken, path, args }) {
   });
   return await parseConvexResponse(response);
 }
-

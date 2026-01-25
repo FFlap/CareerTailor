@@ -75,29 +75,39 @@ export async function callOpenRouterChat({
   model,
   messages,
   temperature = 0.3,
-  maxTokens = 4096,
+  maxTokens,
 }: {
   apiKey: string
   model: string
   messages: OpenRouterChatMessage[]
   temperature?: number
-  maxTokens?: number
+  maxTokens?: number | null
 }) {
   const url = 'https://openrouter.ai/api/v1/chat/completions'
   const headers = {
     Authorization: `Bearer ${apiKey}`,
     'Content-Type': 'application/json',
-    'X-Title': 'ResumeGen',
+    'X-Title': 'CareerTailor',
   }
 
-  const baseBody = {
+  const baseBody: Record<string, unknown> = {
     model,
     messages,
     temperature,
-    max_tokens: maxTokens,
+  }
+  if (typeof maxTokens === 'number') {
+    baseBody.max_tokens = maxTokens
   }
 
-  async function attempt(body: Record<string, unknown>) {
+  function isRetriableStatus(status: number) {
+    return status === 429 || status === 500 || status === 502 || status === 503 || status === 504
+  }
+
+  function sleep(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms))
+  }
+
+  async function attempt(body: Record<string, unknown>, attemptIndex: number) {
     const response = await fetch(url, {
       method: 'POST',
       headers,
@@ -105,6 +115,10 @@ export async function callOpenRouterChat({
     })
     const text = await response.text().catch(() => '')
     if (!response.ok) {
+      if (isRetriableStatus(response.status) && attemptIndex < 2) {
+        await sleep(400 * Math.pow(2, attemptIndex))
+        return attempt(body, attemptIndex + 1)
+      }
       throw new Error(`OpenRouter error (${response.status}): ${text.slice(0, 400)}`)
     }
     const payload = JSON.parse(text) as any
@@ -116,14 +130,17 @@ export async function callOpenRouterChat({
   }
 
   try {
-    return await attempt({
-      ...baseBody,
-      response_format: { type: 'json_object' },
-    })
+    return await attempt(
+      {
+        ...baseBody,
+        response_format: { type: 'json_object' },
+      },
+      0,
+    )
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     if (message.toLowerCase().includes('response_format')) {
-      return await attempt(baseBody)
+      return await attempt(baseBody, 0)
     }
     throw error
   }

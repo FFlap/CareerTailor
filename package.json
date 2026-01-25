@@ -1,5 +1,5 @@
 {
-  "name": "resume-generator",
+  "name": "career-tailor",
   "private": true,
   "scripts": {
     "dev": "npm run dev --prefix app",

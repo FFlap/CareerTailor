@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { to: '/generate', label: 'Generate', icon: 'add_box' },
   { to: '/job-applications', label: 'Job Applications', icon: 'work_outline' },
   { to: '/gallery', label: 'Documents Gallery', icon: 'collections' },
+  { to: '/roast', label: 'Roast', icon: 'local_fire_department' },
   { to: '/templates', label: 'Templates', icon: 'auto_awesome' },
 ]
 
