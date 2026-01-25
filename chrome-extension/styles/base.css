@@ -3,18 +3,18 @@
 
 :root {
   /* Colors */
-  --bg-app: #F9FAFB;      /* Very light gray for app background */
-  --bg-panel: #FFFFFF;    /* Pure white for panels/cards */
-  --text-primary: #111827;
-  --text-secondary: #6B7280;
-  --text-tertiary: #9CA3AF;
-  
-  --primary: #2563EB;     /* Modern blue */
-  --primary-hover: #1D4ED8;
-  --primary-light: #EFF6FF; /* Very light blue for backgrounds */
-  
-  --border-subtle: #E5E7EB;
-  --border-focus: #2563EB;
+  --bg-app: #F8FAFC;      /* Slate 50 */
+  --bg-panel: #FFFFFF;    /* Panel surface */
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-tertiary: #94A3B8;
+
+  --primary: #6366F1;     /* App primary (indigo) */
+  --primary-hover: #4F46E5;
+  --primary-light: #EEF2FF;
+
+  --border-subtle: #E2E8F0;
+  --border-focus: #6366F1;
   --border: var(--border-subtle);
   --panel: var(--bg-panel);
   --accent: var(--primary);

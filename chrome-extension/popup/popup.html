@@ -8,54 +8,86 @@
     <title>AI Resume Builder</title>
   </head>
   <body>
-    <main style="padding: 16px; margin: 0;">
-      <div class="header mb-4" style="flex-direction: column; gap: 4px;">
-        <div class="flex justify-between items-center" style="width: 100%;">
-          <div style="font-weight: 700; font-size: 18px; display: flex; align-items: center; gap: 8px;">
-             <div style="width: 20px; height: 20px; background: var(--primary); border-radius: 4px;"></div>
-             CareerTailor
-          </div>
-          <div class="nav-links">
-             <a href="#" id="openWebApp" target="_blank" rel="noreferrer noopener" style="font-size: 12px; color: var(--primary);">Open Web App ↗</a>
+    <main class="popup">
+      <header class="popup-header">
+        <div class="brand">
+          <span class="brand-mark"></span>
+          <div>
+            <div class="brand-name">CareerTailor</div>
           </div>
         </div>
-        <p class="text-small" style="margin: 0;">Scrape a job • Generate in the web app</p>
-      </div>
+      </header>
 
       <section class="card">
         <div class="toolbar">
-          <span class="badge" id="authStatus">Not connected</span>
-          <button class="primary" id="connectBtn">Connect</button>
+          <div>
+            <div class="section-title">Account</div>
+            <p class="small">Connect to sync jobs and generate resumes.</p>
+          </div>
+          <div class="toolbar-actions">
+            <button class="primary" id="connectBtn">Connect</button>
+          </div>
         </div>
-        <p class="small" style="margin: 0;">
-          The extension only scrapes job info and syncs it to your account.
-        </p>
+      </section>
+
+      <section class="card">
+        <div class="toolbar">
+          <div>
+            <div class="section-title">Settings</div>
+            <p class="small">Connection status</p>
+          </div>
+          <div class="toolbar-actions">
+            <span class="badge" id="authStatus">Not connected</span>
+          </div>
+        </div>
       </section>
 
       <section class="card" id="jobCard">
         <div class="toolbar">
+          <div>
+            <div class="section-title">Job capture</div>
+            <p class="small">Pull from the current tab or add details manually.</p>
+          </div>
+          <button class="ghost" id="refreshJob">Rescrape</button>
+        </div>
+
+        <div class="job-summary">
           <span class="badge" id="jobSource">No job detected</span>
-          <button class="ghost" id="refreshJob">Refresh</button>
-        </div>
-        <div class="grid grid-2">
-          <div>
-            <label for="jobTitle">Job Title</label>
-            <input id="jobTitle" type="text" placeholder="Add job title" />
-          </div>
-          <div>
-            <label for="jobCompany">Company</label>
-            <input id="jobCompany" type="text" placeholder="Add company" />
+          <div class="job-summary-details">
+            <div class="job-summary-title is-empty" id="jobTitleDisplay">Add job title</div>
+            <div class="job-summary-company is-empty" id="jobCompanyDisplay">Add company</div>
+            <div class="job-summary-url small is-empty" id="jobUrlDisplay">Add job URL</div>
           </div>
         </div>
-        <label for="jobUrl">Job URL</label>
-        <input id="jobUrl" type="text" placeholder="https://..." />
-        <label for="jobDescription">Job Description</label>
-        <textarea id="jobDescription" placeholder="Paste job description if auto-scrape fails"></textarea>
-        <div class="toolbar">
+
+        <details class="manual-entry" id="manualEntry">
+          <summary>
+            <span>Manual entry</span>
+            <span class="summary-hint small">Optional</span>
+          </summary>
+          <div class="manual-fields">
+            <label for="jobUrl">Job URL</label>
+            <input id="jobUrl" type="text" placeholder="https://job-posting.com/role" />
+            <div class="grid grid-2">
+              <div>
+                <label for="jobTitle">Job Title</label>
+                <input id="jobTitle" type="text" placeholder="Role title" />
+              </div>
+              <div>
+                <label for="jobCompany">Company</label>
+                <input id="jobCompany" type="text" placeholder="Company name" />
+              </div>
+            </div>
+            <label for="jobDescription">Job Description</label>
+            <textarea id="jobDescription" placeholder="Paste highlights if needed"></textarea>
+          </div>
+        </details>
+
+        <div class="actions">
           <button class="secondary" id="syncBtn">Sync Job</button>
           <button class="primary" id="generateInAppBtn">Generate in Web App</button>
         </div>
-        <span class="small" id="statusText"></span>
+        <span class="small status" id="statusText" role="status"></span>
       </section>
     </main>
     <script type="module" src="popup.js"></script>

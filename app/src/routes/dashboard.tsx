@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { Authenticated, AuthLoading, Unauthenticated, useMutation, useQuery } from 'convex/react'
-import { useUser } from '@clerk/tanstack-start'
+import { useUser } from '@clerk/tanstack-react-start'
 
 import { api } from '@/lib/convex'
 import type { Id } from '../../convex/_generated/dataModel'
@@ -135,8 +135,7 @@ function DashboardContent() {
                       </p>
                       <div className="flex items-center justify-between">
                         <div className="flex -space-x-2">
-                           {/* Placeholder for company logos or user avatars if relevant */}
-                           <div className="h-6 w-6 rounded-full border-2 border-white bg-slate-200 dark:border-slate-800"></div>
+                           {/* Placeholder removed */}
                         </div>
                         <Link 
                             to="/editor/$documentId" 
@@ -161,10 +160,6 @@ function DashboardContent() {
                         <span className="material-icons-outlined text-primary">work_outline</span>
                         Job Applications
                     </h2>
-                    <div className="flex gap-2">
-                        <button className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><span className="material-icons-outlined text-sm">filter_list</span></button>
-                        <button className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><span className="material-icons-outlined text-sm">sort</span></button>
-                    </div>
                 </div>
 
                 <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">

@@ -9,12 +9,14 @@ function HomePage() {
 
   // Mirror the current global theme without forcing it.
   useEffect(() => {
+    if (typeof document === 'undefined') return
     setIsDark(document.documentElement.classList.contains('dark'))
   }, [])
 
   const toggleDarkMode = () => setIsDark(!isDark)
 
   useEffect(() => {
+    if (typeof document === 'undefined') return
     document.documentElement.classList.toggle('dark', isDark)
   }, [isDark])
   return (
@@ -27,7 +29,7 @@ function HomePage() {
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600 dark:text-slate-400">
             <a className="hover:text-primary transition-colors" href="#">Features</a>
-            <a className="hover:text-primary transition-colors" href="#">Templates</a>
+            <Link className="hover:text-primary transition-colors" to="/templates">Templates</Link>
             <a className="hover:text-primary transition-colors" href="#">Pricing</a>
             <button 
               className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 hover:scale-110 transition-transform" 
@@ -90,7 +92,7 @@ function HomePage() {
               </Unauthenticated>
 
               <Authenticated>
-                <Link to="/dashboard" className="px-8 py-4 rounded-full text-lg font-semibold border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all">
+                <Link to="/templates" className="px-8 py-4 rounded-full text-lg font-semibold border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all">
                   View Templates
                 </Link>
               </Authenticated>
@@ -259,7 +261,7 @@ function HomePage() {
             <div>
               <h4 className="font-bold mb-4">Product</h4>
               <ul className="text-slate-400 space-y-2 text-sm">
-                <li><a className="hover:text-white transition-colors" href="#">Templates</a></li>
+                <li><Link className="hover:text-white transition-colors" to="/templates">Templates</Link></li>
                 <li><a className="hover:text-white transition-colors" href="#">Pricing</a></li>
               </ul>
             </div>

@@ -1,7 +1,7 @@
-import { HeadContent, Scripts, createRootRoute, useRouterState } from '@tanstack/react-router'
+import { HeadContent, Link, Scripts, createRootRoute, useRouterState } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
-import { ClerkProvider, useAuth } from '@clerk/tanstack-start'
+import { ClerkProvider, useAuth } from '@clerk/tanstack-react-start'
 import { ConvexProviderWithClerk } from 'convex/react-clerk'
 import { ConvexReactClient } from 'convex/react'
 
@@ -55,6 +55,7 @@ export const Route = createRootRoute({
   }),
 
   shellComponent: RootDocument,
+  notFoundComponent: NotFound,
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
@@ -91,5 +92,20 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         </html>
       </ConvexProviderWithClerk>
     </ClerkProvider>
+  )
+}
+
+function NotFound() {
+  return (
+    <main className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-3xl flex-col items-center justify-center gap-3 px-4 py-12 text-center">
+      <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">404</p>
+      <h1 className="text-3xl font-semibold">Page not found</h1>
+      <p className="text-sm text-muted-foreground">
+        The page you're looking for doesn't exist or was moved.
+      </p>
+      <Link className="text-sm font-medium text-foreground underline underline-offset-4" to="/">
+        Back to home
+      </Link>
+    </main>
   )
 }

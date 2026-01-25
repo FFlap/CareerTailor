@@ -65,9 +65,10 @@ function TemplatesPage() {
 
 function TemplatesContent() {
   const { isAuthenticated, isLoading } = useConvexAuth()
+  const canQueryTemplates = isAuthenticated && !isLoading
   const customTemplates = useQuery(
     api.customTemplates.listMyTemplates,
-    isAuthenticated && !isLoading ? {} : 'skip',
+    canQueryTemplates ? {} : 'skip',
   )
   const createTemplateFromSource = useMutation(
     api.customTemplates.createTemplateFromSource,
@@ -226,11 +227,6 @@ function TemplatesContent() {
       cancelled = true
     }
   }, [selectedCover, coverSources])
-
-  // Prevent rendering while auth is loading to avoid race condition
-  if (isLoading) {
-    return null
-  }
 
   function resetCreateForm() {
     setNewTemplateName('')

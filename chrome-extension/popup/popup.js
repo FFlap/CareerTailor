@@ -3,13 +3,16 @@ import { setConnectState } from "../common/storage.js";
 
 const authStatusEl = document.getElementById("authStatus");
 const connectBtn = document.getElementById("connectBtn");
-const openWebAppLink = document.getElementById("openWebApp");
 
 const jobTitleInput = document.getElementById("jobTitle");
 const jobCompanyInput = document.getElementById("jobCompany");
 const jobUrlInput = document.getElementById("jobUrl");
 const jobDescriptionInput = document.getElementById("jobDescription");
 const jobSourceBadge = document.getElementById("jobSource");
+const jobTitleDisplay = document.getElementById("jobTitleDisplay");
+const jobCompanyDisplay = document.getElementById("jobCompanyDisplay");
+const jobUrlDisplay = document.getElementById("jobUrlDisplay");
+const manualEntry = document.getElementById("manualEntry");
 
 const refreshJobBtn = document.getElementById("refreshJob");
 const syncBtn = document.getElementById("syncBtn");
@@ -21,6 +24,28 @@ let isConnected = false;
 
 function setStatus(text) {
   statusText.textContent = text || "";
+}
+
+function setSummaryText(el, value, fallback) {
+  if (!el) return;
+  const trimmed = (value || "").trim();
+  el.textContent = trimmed || fallback;
+  el.classList.toggle("is-empty", !trimmed);
+  if (el === jobUrlDisplay) {
+    el.title = trimmed || "";
+  }
+}
+
+function updateSummary() {
+  setSummaryText(jobTitleDisplay, jobTitleInput.value, "Add job title");
+  setSummaryText(jobCompanyDisplay, jobCompanyInput.value, "Add company");
+  setSummaryText(jobUrlDisplay, jobUrlInput.value, "Add job URL");
+}
+
+function revealManualEntry() {
+  if (manualEntry && !manualEntry.open) {
+    manualEntry.open = true;
+  }
 }
 
 function generateConnectState() {
@@ -45,7 +70,10 @@ function applyJob(job) {
   jobCompanyInput.value = job?.company || "";
   jobUrlInput.value = job?.url || "";
   jobDescriptionInput.value = job?.description || "";
-  jobSourceBadge.textContent = `Detected: ${job?.source || "job"}`;
+  const sourceLabel =
+    job?.source && job.source !== "extension" ? `Detected: ${job.source}` : "Manual entry";
+  jobSourceBadge.textContent = sourceLabel;
+  updateSummary();
 }
 
 function getJobData() {
@@ -122,10 +150,6 @@ async function syncJob(job) {
 }
 
 async function init() {
-  if (openWebAppLink) {
-    openWebAppLink.href = APP_BASE_URL;
-  }
-
   await refreshAuthStatus();
 
   connectBtn.addEventListener("click", () => {
@@ -141,6 +165,7 @@ async function init() {
         ? "Refresh page to detect job"
         : "Manual entry";
       setStatus("No job detected. Paste details manually or open a supported job page.");
+      updateSummary();
     }
   });
 
@@ -157,7 +182,12 @@ async function init() {
       await syncJob(job);
       setStatus("Synced.");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Sync failed.");
+      const message = error instanceof Error ? error.message : "Sync failed.";
+      setStatus(message);
+      if (message.toLowerCase().includes("job url")) {
+        revealManualEntry();
+        jobUrlInput?.focus();
+      }
     }
   });
 
@@ -176,8 +206,23 @@ async function init() {
       chrome.tabs.create({ url });
       setStatus("Opened.");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to open web app.");
+      const message = error instanceof Error ? error.message : "Failed to open web app.";
+      setStatus(message);
+      if (message.toLowerCase().includes("job url")) {
+        revealManualEntry();
+        jobUrlInput?.focus();
+      }
     }
+  });
+
+  const manualInputs = [jobTitleInput, jobCompanyInput, jobUrlInput, jobDescriptionInput];
+  manualInputs.forEach((input) => {
+    input.addEventListener("input", () => {
+      updateSummary();
+      if (!currentJob?.source || currentJob.source === "extension") {
+        jobSourceBadge.textContent = "Manual entry";
+      }
+    });
   });
 
   const stored = await chrome.runtime.sendMessage({ type: "GET_CURRENT_JOB" });
@@ -192,6 +237,8 @@ async function init() {
       ? "Refresh page to detect job"
       : "Manual entry";
   }
+
+  updateSummary();
 
   chrome.runtime.onMessage.addListener((message) => {
     if (message?.type !== "JOB_SCRAPED" || !message.job) return;

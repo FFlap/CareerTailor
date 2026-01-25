@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { SignedIn, SignedOut, UserButton, useUser } from '@clerk/tanstack-start'
+import { SignedIn, SignedOut, UserButton, useUser } from '@clerk/tanstack-react-start'
 import { useState, useEffect } from 'react'
 
 export default function Header() {
@@ -31,7 +31,10 @@ export default function Header() {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
                 <span className="material-icons-outlined text-xl text-white">description</span>
               </div>
-              <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">CareerTailor</span>
+              <span className="text-xl font-bold tracking-tight">
+                <span className="text-slate-900 dark:text-white">Career</span>
+                <span className="text-primary">Tailor</span>
+              </span>
             </Link>
             <div className="hidden md:flex space-x-4">
               <Link to="/dashboard" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-primary dark:text-slate-400 [&.active]:bg-primary/10 [&.active]:text-primary">Dashboard</Link>

@@ -159,6 +159,9 @@ function TemplatePickerModal({
   allowNone = false,
   noneLabel = 'None',
 }: TemplatePickerModalProps) {
+  if (typeof document === 'undefined') {
+    return null
+  }
   const [draftId, setDraftId] = useState<string>(selectedId)
   const [status, setStatus] = useState<string>('')
   const previewRef = useRef<HTMLDivElement | null>(null)

@@ -125,7 +125,7 @@ function GalleryContent() {
                 </p>
                 <div className="flex items-center justify-between">
                   <div className="flex -space-x-2">
-                    <div className="h-6 w-6 rounded-full border-2 border-white bg-slate-200 dark:border-slate-800"></div>
+                    {/* Placeholder circle removed */}
                   </div>
                   <Link
                     to="/editor/$documentId"

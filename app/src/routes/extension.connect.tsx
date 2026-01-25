@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { SignIn, SignedIn, SignedOut, useAuth } from '@clerk/tanstack-start'
+import { SignIn, SignedIn, SignedOut, useAuth } from '@clerk/tanstack-react-start'
 import { useMemo, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
