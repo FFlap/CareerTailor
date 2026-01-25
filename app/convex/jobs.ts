@@ -19,7 +19,16 @@ export const upsertMyJob = mutation({
     title: v.optional(v.string()),
     company: v.optional(v.string()),
     description: v.optional(v.string()),
-    status: v.optional(v.union(v.literal('viewed'), v.literal('applied'))),
+    addedAt: v.optional(v.number()),
+    status: v.optional(
+      v.union(
+        v.literal('viewed'),
+        v.literal('applied'),
+        v.literal('interview'),
+        v.literal('accepted'),
+        v.literal('ghosted'),
+      ),
+    ),
   },
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx)
@@ -44,19 +53,34 @@ export const upsertMyJob = mutation({
       .withIndex('by_user_url', (q) => q.eq('userId', userId).eq('url', normalizedUrl))
       .unique()
 
+    const safeAddedAt =
+      typeof args.addedAt === 'number' && Number.isFinite(args.addedAt)
+        ? Math.min(Math.max(args.addedAt, 0), now)
+        : undefined
+
+    const inputStatus = args.status ?? 'viewed'
+    const resolvedStatus =
+      existing && inputStatus === 'viewed' && existing.status !== 'viewed'
+        ? existing.status
+        : inputStatus
+
     const payload = {
       title: (args.title?.trim() ?? '').slice(0, MAX_JOB_TEXT.title),
       company: (args.company?.trim() ?? '').slice(0, MAX_JOB_TEXT.company),
       description: (args.description?.trim() ?? '').slice(0, MAX_JOB_TEXT.description),
       jobId: (args.jobId?.trim() ?? '').slice(0, MAX_JOB_TEXT.jobId),
       source: (args.source?.trim() ?? 'extension').slice(0, MAX_JOB_TEXT.source),
-      status: args.status ?? 'viewed',
+      status: resolvedStatus,
       lastSeenAt: now,
       updatedAt: now,
     } as const
 
     if (existing) {
-      await ctx.db.patch(existing._id, payload)
+      const addedAt = existing.addedAt ?? safeAddedAt ?? existing.createdAt ?? now
+      await ctx.db.patch(existing._id, {
+        ...payload,
+        ...(existing.addedAt ? {} : { addedAt }),
+      })
       return existing._id
     }
 
@@ -64,6 +88,7 @@ export const upsertMyJob = mutation({
       userId,
       url: normalizedUrl,
       ...payload,
+      addedAt: safeAddedAt ?? now,
       createdAt: now,
     })
   },
@@ -108,7 +133,13 @@ export const getMyJobByUrl = query({
 export const setJobStatus = mutation({
   args: {
     jobId: v.id('jobs'),
-    status: v.union(v.literal('viewed'), v.literal('applied')),
+    status: v.union(
+      v.literal('viewed'),
+      v.literal('applied'),
+      v.literal('interview'),
+      v.literal('accepted'),
+      v.literal('ghosted'),
+    ),
   },
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx)

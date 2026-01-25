@@ -5,6 +5,25 @@ import { useUser } from '@clerk/tanstack-start'
 import { api } from '@/lib/convex'
 import type { Id } from '../../convex/_generated/dataModel'
 import { cn } from '@/lib/utils'
+import SidebarLayout from '@/components/SidebarLayout'
+
+type JobStatus = 'viewed' | 'applied' | 'interview' | 'accepted' | 'ghosted'
+
+const JOB_STATUS_OPTIONS: { value: JobStatus; label: string }[] = [
+  { value: 'viewed', label: 'Viewed' },
+  { value: 'applied', label: 'Applied' },
+  { value: 'interview', label: 'Interview' },
+  { value: 'accepted', label: 'Accepted' },
+  { value: 'ghosted', label: 'Ghosted' },
+]
+
+const JOB_STATUS_STYLES: Record<JobStatus, string> = {
+  viewed: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300',
+  applied: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  interview: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+  accepted: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+  ghosted: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300',
+}
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
@@ -43,17 +62,17 @@ function DashboardContent() {
   const documents = useQuery(api.documents.listMyRecentDocuments, { limit: 6 })
   const setJobStatus = useMutation(api.jobs.setJobStatus)
 
-  async function markApplied(jobId: Id<'jobs'>) {
-    await setJobStatus({ jobId, status: 'applied' })
+  async function updateJobStatus(jobId: Id<'jobs'>, status: JobStatus) {
+    await setJobStatus({ jobId, status })
   }
 
   // Calculate stats
-  const appliedCount = jobs?.filter(job => job.status === 'applied').length || 0
+  const appliedCount = jobs?.filter(job => (job.status ?? 'viewed') !== 'viewed').length || 0
   const activeTracked = jobs?.length || 0
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 font-sans">
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <SidebarLayout>
+      <div className="space-y-10 min-w-0">
         {/* Header Section */}
         <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
@@ -79,7 +98,7 @@ function DashboardContent() {
               <span className="material-icons-outlined text-primary">history</span>
               Recent Documents
             </h2>
-            <a href="#" className="text-sm font-medium text-primary hover:underline">View all</a>
+            <Link to="/gallery" className="text-sm font-medium text-primary hover:underline">View all</Link>
           </div>
           
           <div className="custom-scrollbar flex gap-4 overflow-x-auto pb-4">
@@ -165,7 +184,10 @@ function DashboardContent() {
                                 ) : jobs.length === 0 ? (
                                     <tr><td colSpan={4} className="p-6 text-center text-slate-500">No jobs tracked yet.</td></tr>
                                 ) : (
-                                    jobs.slice(0, 10).map((job: any) => (
+                                    jobs.slice(0, 10).map((job: any) => {
+                                      const status = (job.status ?? 'viewed') as JobStatus
+                                      const addedAt = job.addedAt ?? job.createdAt ?? job.lastSeenAt
+                                      return (
                                         <tr key={job._id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
@@ -179,27 +201,28 @@ function DashboardContent() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-                                                    job.status === 'applied' 
-                                                        ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-                                                        : "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
-                                                )}>
-                                                    {job.status === 'applied' ? 'Applied' : 'To Apply'}
-                                                </span>
+                                                <select
+                                                  aria-label="Set job status"
+                                                  value={status}
+                                                  onChange={(event) =>
+                                                    updateJobStatus(job._id, event.target.value as JobStatus)
+                                                  }
+                                                  className={cn(
+                                                    'inline-flex items-center rounded-full border border-transparent px-2.5 py-0.5 text-xs font-medium shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40',
+                                                    JOB_STATUS_STYLES[status],
+                                                  )}
+                                                >
+                                                  {JOB_STATUS_OPTIONS.map(option => (
+                                                    <option key={option.value} value={option.value}>
+                                                      {option.label}
+                                                    </option>
+                                                  ))}
+                                                </select>
                                             </td>
                                             <td className="px-6 py-4 text-xs text-slate-500">
-                                                {/* Date placeholder or created stats */}
-                                                Today
+                                                {typeof addedAt === 'number' ? new Date(addedAt).toLocaleDateString() : '—'}
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                {job.status !== 'applied' ? (
-                                                     <button 
-                                                        onClick={() => markApplied(job._id)}
-                                                        className="rounded bg-primary px-3 py-1 text-xs font-semibold text-white hover:opacity-90 mr-2"
-                                                     >
-                                                        Mark Applied
-                                                     </button>
-                                                ) : null}
                                                  <Link
                                                     to="/generate"
                                                     search={{
@@ -209,6 +232,7 @@ function DashboardContent() {
                                                       url: job.url,
                                                       source: job.source,
                                                       jobId: job.jobId,
+                                                      addedAt,
                                                     }}
                                                     className="rounded px-3 py-1 text-xs font-semibold text-primary hover:bg-primary/5"
                                                  >
@@ -216,7 +240,8 @@ function DashboardContent() {
                                                  </Link>
                                             </td>
                                         </tr>
-                                    ))
+                                      )
+                                    })
                                 )}
                             </tbody>
                         </table>
@@ -291,7 +316,7 @@ function DashboardContent() {
             <button className="p-2 text-slate-400"><span className="material-icons-outlined">person</span></button>
         </div>
 
-      </main>
-    </div>
+      </div>
+    </SidebarLayout>
   )
 }

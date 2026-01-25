@@ -123,5 +123,6 @@
 
   .typst-preview canvas {
     display: block;
+    background: #ffffff;
   }
 }

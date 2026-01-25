@@ -55,6 +55,12 @@ export const Route = createFileRoute('/generate')({
     if (typeof search.url === 'string') parsed.url = search.url
     if (typeof search.source === 'string') parsed.source = search.source
     if (typeof search.jobId === 'string') parsed.jobId = search.jobId
+    if (typeof search.addedAt === 'number' && Number.isFinite(search.addedAt)) {
+      parsed.addedAt = search.addedAt
+    } else if (typeof search.addedAt === 'string') {
+      const addedAt = Number(search.addedAt)
+      if (Number.isFinite(addedAt)) parsed.addedAt = addedAt
+    }
     return parsed
   },
   component: GeneratePage,
@@ -68,6 +74,7 @@ type GenerateSearch = {
   url?: string
   source?: string
   jobId?: string
+  addedAt?: number
 }
 
 type JobDraft = {
@@ -77,6 +84,7 @@ type JobDraft = {
   url: string
   source: string
   jobId: string
+  addedAt?: number
 }
 
 type ResumeTemplateSelection = ResumeTemplateId | `custom:${string}` | 'none'
@@ -376,6 +384,7 @@ function GenerateContent() {
       url: parsed?.url ?? search.url ?? '',
       source: parsed?.source ?? search.source ?? 'extension',
       jobId: parsed?.jobId ?? search.jobId ?? '',
+      addedAt: parsed?.addedAt ?? search.addedAt,
     } satisfies JobDraft
   }, [search])
 
@@ -395,6 +404,8 @@ function GenerateContent() {
       description: current.description || existingJob.description || '',
       jobId: current.jobId || existingJob.jobId || '',
       source: current.source || existingJob.source || 'extension',
+      addedAt:
+        current.addedAt ?? existingJob.addedAt ?? existingJob.createdAt ?? existingJob.lastSeenAt,
     }))
   }, [existingJob])
 

@@ -40,7 +40,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 async function handleJobScraped(job, sender) {
   const url = job?.url || sender?.tab?.url || "";
-  const merged = { ...(job || {}), url };
+  const existing = await getCurrentJob().catch(() => null);
+  const existingAddedAt =
+    existing?.url === url &&
+    typeof existing?.addedAt === "number" &&
+    Number.isFinite(existing.addedAt)
+      ? existing.addedAt
+      : undefined;
+  const jobAddedAt =
+    typeof job?.addedAt === "number" && Number.isFinite(job.addedAt)
+      ? job.addedAt
+      : undefined;
+  const merged = {
+    ...(job || {}),
+    url,
+    addedAt: existingAddedAt ?? jobAddedAt ?? Date.now()
+  };
   await setCurrentJob(merged);
   await syncJobToConvex(merged).catch(() => {});
 }
@@ -67,7 +82,10 @@ async function syncJobToConvex(job) {
       title: String(job?.title || ""),
       company: String(job?.company || ""),
       description: String(job?.description || ""),
-      status: "viewed"
+      addedAt:
+        typeof job?.addedAt === "number" && Number.isFinite(job.addedAt)
+          ? job.addedAt
+          : Date.now()
     }
   }).catch(async (error) => {
     const message = error instanceof Error ? error.message : String(error || "");

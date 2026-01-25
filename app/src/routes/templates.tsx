@@ -180,7 +180,6 @@ function TemplatesContent() {
       documentType: 'resume',
       templateId: selectedResume,
       container,
-      backgroundColor: '#f8fafc',
     })
       .then(() => {
         if (!cancelled) setResumeStatus('')
@@ -213,7 +212,6 @@ function TemplatesContent() {
       documentType: 'cover_letter',
       templateId: selectedCover,
       container,
-      backgroundColor: '#f0fdf4',
     })
       .then(() => {
         if (!cancelled) setCoverStatus('')

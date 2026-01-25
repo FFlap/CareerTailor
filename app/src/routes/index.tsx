@@ -7,20 +7,16 @@ export const Route = createFileRoute('/')({ component: HomePage })
 function HomePage() {
   const [isDark, setIsDark] = useState(false)
 
-  // Initialize dark mode based on system preference or local storage if needed.
-  // For now, defaulting to light mode as per state init, but we can respect system.
+  // Mirror the current global theme without forcing it.
   useEffect(() => {
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-       setIsDark(true)
-    }
+    setIsDark(document.documentElement.classList.contains('dark'))
   }, [])
+
+  const toggleDarkMode = () => setIsDark(!isDark)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark)
   }, [isDark])
-
-  const toggleDarkMode = () => setIsDark(!isDark)
-
   return (
     <div className="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-sans antialiased transition-colors duration-300 min-h-screen">
       <header className="fixed top-0 w-full z-50 border-b border-slate-200/50 dark:border-slate-800/50 backdrop-blur-md bg-white/70 dark:bg-slate-900/70">
@@ -43,13 +39,23 @@ function HomePage() {
             </button>
           </div>
           <div className="flex items-center gap-4">
-            <Link to="/sign-in" className="text-sm font-medium hover:text-primary transition-colors">Login</Link>
-            <Link 
-              to="/sign-up" 
-              className="bg-primary text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
-            >
-                Sign Up
-            </Link>
+            <Unauthenticated>
+              <Link to="/sign-in" className="text-sm font-medium hover:text-primary transition-colors">Login</Link>
+              <Link 
+                to="/sign-up" 
+                className="bg-primary text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
+              >
+                  Sign Up
+              </Link>
+            </Unauthenticated>
+            <Authenticated>
+              <Link 
+                to="/dashboard" 
+                className="bg-primary text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
+              >
+                Go to Dashboard
+              </Link>
+            </Authenticated>
           </div>
         </nav>
       </header>
@@ -83,9 +89,16 @@ function HomePage() {
                   </Link>
               </Unauthenticated>
 
-              <button className="px-8 py-4 rounded-full text-lg font-semibold border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all">
+              <Authenticated>
+                <Link to="/dashboard" className="px-8 py-4 rounded-full text-lg font-semibold border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all">
                   View Templates
-              </button>
+                </Link>
+              </Authenticated>
+              <Unauthenticated>
+                <Link to="/templates" className="px-8 py-4 rounded-full text-lg font-semibold border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all">
+                  View Templates
+                </Link>
+              </Unauthenticated>
             </div>
           </div>
           

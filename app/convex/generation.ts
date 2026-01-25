@@ -21,6 +21,7 @@ const jobInput = v.object({
   title: v.optional(v.string()),
   company: v.optional(v.string()),
   description: v.optional(v.string()),
+  addedAt: v.optional(v.number()),
 })
 
 const preferencesInput = v.object({
@@ -71,7 +72,7 @@ export const generateDocuments = action({
       title: args.job.title ?? '',
       company: args.job.company ?? '',
       description: args.job.description ?? '',
-      status: 'viewed',
+      addedAt: args.job.addedAt,
     })
 
     const baseInput = {

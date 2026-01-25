@@ -13,7 +13,9 @@ import { Route as TemplatesRouteImport } from './routes/templates'
 import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as JobApplicationsRouteImport } from './routes/job-applications'
 import { Route as GenerateRouteImport } from './routes/generate'
+import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ExtensionConnectRouteImport } from './routes/extension.connect'
@@ -40,9 +42,19 @@ const OnboardingRoute = OnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JobApplicationsRoute = JobApplicationsRouteImport.update({
+  id: '/job-applications',
+  path: '/job-applications',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GenerateRoute = GenerateRouteImport.update({
   id: '/generate',
   path: '/generate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GalleryRoute = GalleryRouteImport.update({
+  id: '/gallery',
+  path: '/gallery',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -74,7 +86,9 @@ const ApiRenderTypstRoute = ApiRenderTypstRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/gallery': typeof GalleryRoute
   '/generate': typeof GenerateRoute
+  '/job-applications': typeof JobApplicationsRoute
   '/onboarding': typeof OnboardingRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
@@ -86,7 +100,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/gallery': typeof GalleryRoute
   '/generate': typeof GenerateRoute
+  '/job-applications': typeof JobApplicationsRoute
   '/onboarding': typeof OnboardingRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
@@ -99,7 +115,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/gallery': typeof GalleryRoute
   '/generate': typeof GenerateRoute
+  '/job-applications': typeof JobApplicationsRoute
   '/onboarding': typeof OnboardingRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
@@ -113,7 +131,9 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/dashboard'
+    | '/gallery'
     | '/generate'
+    | '/job-applications'
     | '/onboarding'
     | '/sign-in'
     | '/sign-up'
@@ -125,7 +145,9 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/dashboard'
+    | '/gallery'
     | '/generate'
+    | '/job-applications'
     | '/onboarding'
     | '/sign-in'
     | '/sign-up'
@@ -137,7 +159,9 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/dashboard'
+    | '/gallery'
     | '/generate'
+    | '/job-applications'
     | '/onboarding'
     | '/sign-in'
     | '/sign-up'
@@ -150,7 +174,9 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
+  GalleryRoute: typeof GalleryRoute
   GenerateRoute: typeof GenerateRoute
+  JobApplicationsRoute: typeof JobApplicationsRoute
   OnboardingRoute: typeof OnboardingRoute
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
@@ -190,11 +216,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/job-applications': {
+      id: '/job-applications'
+      path: '/job-applications'
+      fullPath: '/job-applications'
+      preLoaderRoute: typeof JobApplicationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/generate': {
       id: '/generate'
       path: '/generate'
       fullPath: '/generate'
       preLoaderRoute: typeof GenerateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gallery': {
+      id: '/gallery'
+      path: '/gallery'
+      fullPath: '/gallery'
+      preLoaderRoute: typeof GalleryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -238,7 +278,9 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
+  GalleryRoute: GalleryRoute,
   GenerateRoute: GenerateRoute,
+  JobApplicationsRoute: JobApplicationsRoute,
   OnboardingRoute: OnboardingRoute,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,

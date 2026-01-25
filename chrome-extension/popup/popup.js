@@ -32,7 +32,15 @@ function generateConnectState() {
 }
 
 function applyJob(job) {
-  currentJob = job;
+  const existingAddedAt =
+    typeof currentJob?.addedAt === "number" && Number.isFinite(currentJob.addedAt)
+      ? currentJob.addedAt
+      : undefined;
+  const incomingAddedAt =
+    typeof job?.addedAt === "number" && Number.isFinite(job.addedAt)
+      ? job.addedAt
+      : undefined;
+  currentJob = { ...(job || {}), addedAt: incomingAddedAt ?? existingAddedAt ?? Date.now() };
   jobTitleInput.value = job?.title || "";
   jobCompanyInput.value = job?.company || "";
   jobUrlInput.value = job?.url || "";
@@ -41,13 +49,18 @@ function applyJob(job) {
 }
 
 function getJobData() {
+  const addedAt =
+    typeof currentJob?.addedAt === "number" && Number.isFinite(currentJob.addedAt)
+      ? currentJob.addedAt
+      : Date.now();
   return {
     title: jobTitleInput.value.trim(),
     company: jobCompanyInput.value.trim(),
     url: jobUrlInput.value.trim() || currentJob?.url || "",
     description: jobDescriptionInput.value.trim(),
     source: currentJob?.source || "extension",
-    jobId: currentJob?.jobId || ""
+    jobId: currentJob?.jobId || "",
+    addedAt
   };
 }
 
@@ -159,7 +172,7 @@ async function init() {
       }
       const job = getJobData();
       await syncJob(job);
-      const url = `${APP_BASE_URL}/generate?url=${encodeURIComponent(job.url)}&title=${encodeURIComponent(job.title)}&company=${encodeURIComponent(job.company)}`;
+      const url = `${APP_BASE_URL}/generate?url=${encodeURIComponent(job.url)}&title=${encodeURIComponent(job.title)}&company=${encodeURIComponent(job.company)}&addedAt=${encodeURIComponent(String(job.addedAt))}`;
       chrome.tabs.create({ url });
       setStatus("Opened.");
     } catch (error) {
