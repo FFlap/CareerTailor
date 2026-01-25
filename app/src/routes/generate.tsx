@@ -159,9 +159,7 @@ function TemplatePickerModal({
   allowNone = false,
   noneLabel = 'None',
 }: TemplatePickerModalProps) {
-  if (typeof document === 'undefined') {
-    return null
-  }
+  const canUseDom = typeof document !== 'undefined'
   const [draftId, setDraftId] = useState<string>(selectedId)
   const [status, setStatus] = useState<string>('')
   const previewRef = useRef<HTMLDivElement | null>(null)
@@ -213,7 +211,7 @@ function TemplatePickerModal({
     }
   }, [open, draftId, allowNone, documentType, sources, accent])
 
-  if (!open) return null
+  if (!open || !canUseDom) return null
 
   const accentClasses =
     accent === 'indigo'

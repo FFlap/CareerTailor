@@ -1,7 +1,14 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
+import type { Id } from './_generated/dataModel'
 
 import { requireUserId } from './lib/auth'
+import {
+  buildCoverLetterTypstSource,
+  buildCustomCoverLetterTypstSource,
+  buildCustomResumeTypstSource,
+  buildResumeTypstSource,
+} from './lib/templates'
 
 const MAX_TYPST_SOURCE_LENGTH = 400_000
 
@@ -69,6 +76,86 @@ export const updateMyTypstSource = mutation({
     const now = Date.now()
     await ctx.db.patch(args.documentId, { typstSource: args.typstSource, updatedAt: now })
     return { ok: true }
+  },
+})
+
+export const updateMyDocumentData = mutation({
+  args: {
+    documentId: v.id('documents'),
+    data: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx)
+    const doc = await ctx.db.get(args.documentId)
+    if (!doc || doc.userId !== userId) {
+      throw new Error('Not found.')
+    }
+
+    const profileDoc = await ctx.db
+      .query('profiles')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .unique()
+    const profile = profileDoc?.profile ?? {}
+
+    const rawTemplateId = doc.templateId || (doc.type === 'resume' ? 'basic_resume' : 'modern_cv_cover')
+    const isCustom = rawTemplateId.startsWith('custom:')
+    let templateSource: string | null = null
+    let resolvedTemplateId = rawTemplateId
+
+    if (isCustom) {
+      const customId = rawTemplateId.slice('custom:'.length) as Id<'customTemplates'>
+      const customTemplate = await ctx.db.get(customId)
+      if (!customTemplate || customTemplate.userId !== userId) {
+        throw new Error('Custom template not found.')
+      }
+      templateSource = customTemplate.source
+    }
+
+    const job = doc.type === 'cover_letter' ? await ctx.db.get(doc.jobId) : null
+    const safeJob = job && job.userId === userId ? job : null
+
+    let typstSource = doc.typstSource
+    if (doc.type === 'resume') {
+      const resume = args.data
+      typstSource = templateSource
+        ? buildCustomResumeTypstSource({
+            templateSource,
+            resume,
+            profile,
+          })
+        : buildResumeTypstSource({
+            templateId: resolvedTemplateId as any,
+            resume,
+            profile,
+          })
+    } else {
+      const coverLetter = args.data
+      typstSource = templateSource
+        ? buildCustomCoverLetterTypstSource({
+            templateSource,
+            coverLetter,
+            profile,
+            job: safeJob,
+          })
+        : buildCoverLetterTypstSource({
+            templateId: resolvedTemplateId as any,
+            coverLetter,
+            profile,
+            job: safeJob,
+          })
+    }
+
+    if (typstSource.length > MAX_TYPST_SOURCE_LENGTH) {
+      throw new Error('Typst source too large.')
+    }
+
+    const now = Date.now()
+    await ctx.db.patch(args.documentId, {
+      data: args.data,
+      typstSource,
+      updatedAt: now,
+    })
+    return { typstSource }
   },
 })
 

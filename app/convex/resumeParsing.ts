@@ -49,3 +49,46 @@ ${args.resumeText}`
     return safeJsonParse(raw)
   },
 })
+
+export const parseCoverLetterText = action({
+  args: {
+    coverLetterText: v.string(),
+    model: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireUserId(ctx)
+
+    const openRouterKey = process.env.OPENROUTER_API_KEY
+    if (!openRouterKey) throw new Error('Missing OPENROUTER_API_KEY')
+
+    const prompt = `You are an expert cover letter parser.
+Extract structured data from this cover letter text and return ONLY valid JSON.
+
+Output schema: {
+  cover_letter: {
+    greeting: string,
+    body_paragraphs: [string],
+    closing: string,
+    signature_name: string
+  }
+}
+
+Important parsing rules:
+- Keep paragraph order intact
+- Use an array for body_paragraphs even if only one paragraph
+- All string fields should be strings even if empty
+
+Cover letter text:
+${args.coverLetterText}`
+
+    const raw = await callOpenRouterChat({
+      apiKey: openRouterKey,
+      model: args.model,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.2,
+      maxTokens: 2048,
+    })
+
+    return safeJsonParse(raw)
+  },
+})
