@@ -108,7 +108,12 @@ function DashboardContent() {
                <div className="p-4 text-slate-500">No documents yet. Create one!</div>
             ) : (
                 documents.map((doc: any) => (
-                    <div key={doc._id} className="flex-none w-72 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
+                    <Link
+                      key={doc._id}
+                      to="/editor/$documentId"
+                      params={{ documentId: doc._id }}
+                      className="flex-none w-72 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-800"
+                    >
                       <div className="mb-4 flex items-start justify-between">
                         <div className={cn("rounded-lg p-2", 
                             doc.type === 'cover_letter' 
@@ -133,19 +138,7 @@ function DashboardContent() {
                       <p className="mb-4 text-xs text-slate-500">
                           Modified {new Date(doc.createdAt).toLocaleDateString()}
                       </p>
-                      <div className="flex items-center justify-between">
-                        <div className="flex -space-x-2">
-                           {/* Placeholder removed */}
-                        </div>
-                        <Link 
-                            to="/editor/$documentId" 
-                            params={{ documentId: doc._id }}
-                            className="text-sm font-semibold text-primary hover:underline"
-                        >
-                            Open
-                        </Link>
-                      </div>
-                    </div>
+                    </Link>
                 ))
             )}
           </div>
@@ -190,7 +183,18 @@ function DashboardContent() {
                                                         <span className="material-icons-outlined text-slate-400 text-sm">business</span>
                                                     </div>
                                                     <div>
-                                                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{job.title}</p>
+                                                        {job.url ? (
+                                                          <a
+                                                            href={job.url}
+                                                            target="_blank"
+                                                            rel="noreferrer noopener"
+                                                            className="text-sm font-semibold text-slate-900 hover:text-primary dark:text-slate-100"
+                                                          >
+                                                            {job.title}
+                                                          </a>
+                                                        ) : (
+                                                          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{job.title}</p>
+                                                        )}
                                                         <p className="text-xs text-slate-500">{job.company}</p>
                                                     </div>
                                                 </div>

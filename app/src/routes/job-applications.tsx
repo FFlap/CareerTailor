@@ -214,7 +214,18 @@ function JobApplicationsContent() {
                               <span className="material-icons-outlined text-slate-400 text-sm">business</span>
                             </div>
                             <div>
-                              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{job.title}</p>
+                              {job.url ? (
+                                <a
+                                  href={job.url}
+                                  target="_blank"
+                                  rel="noreferrer noopener"
+                                  className="text-sm font-semibold text-slate-900 hover:text-primary dark:text-slate-100"
+                                >
+                                  {job.title}
+                                </a>
+                              ) : (
+                                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{job.title}</p>
+                              )}
                               <p className="text-xs text-slate-500">{job.company}</p>
                             </div>
                           </div>

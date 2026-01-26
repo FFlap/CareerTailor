@@ -89,7 +89,12 @@ function GalleryContent() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {filteredDocuments.map((doc: any) => (
-              <div key={doc._id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
+              <Link
+                key={doc._id}
+                to="/editor/$documentId"
+                params={{ documentId: doc._id }}
+                className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-800"
+              >
                 <div className="mb-4 flex items-start justify-between">
                   <div
                     className={cn(
@@ -123,19 +128,7 @@ function GalleryContent() {
                 <p className="mb-4 text-xs text-slate-500">
                   Modified {new Date(doc.createdAt).toLocaleDateString()}
                 </p>
-                <div className="flex items-center justify-between">
-                  <div className="flex -space-x-2">
-                    {/* Placeholder circle removed */}
-                  </div>
-                  <Link
-                    to="/editor/$documentId"
-                    params={{ documentId: doc._id }}
-                    className="text-sm font-semibold text-primary hover:underline"
-                  >
-                    Open
-                  </Link>
-                </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}
