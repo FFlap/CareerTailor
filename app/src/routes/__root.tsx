@@ -62,7 +62,16 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
-  const hideHeader = pathname.startsWith('/editor/') || pathname === '/'
+  const hideHeader =
+    pathname.startsWith('/editor/') ||
+    pathname === '/' ||
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/generate') ||
+    pathname.startsWith('/job-applications') ||
+    pathname.startsWith('/gallery') ||
+    pathname.startsWith('/roast') ||
+    pathname.startsWith('/templates') ||
+    pathname.startsWith('/onboarding')
 
   return (
     <ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>

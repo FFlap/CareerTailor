@@ -1,10 +1,21 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useRouterState } from '@tanstack/react-router'
 import { SignedIn, SignedOut, UserButton, useUser } from '@clerk/tanstack-react-start'
 import { useState, useEffect } from 'react'
 
 export default function Header() {
   const { user } = useUser()
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
   const [isDark, setIsDark] = useState(false)
+  const isWorkspaceRoute =
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/generate') ||
+    pathname.startsWith('/job-applications') ||
+    pathname.startsWith('/gallery') ||
+    pathname.startsWith('/roast') ||
+    pathname.startsWith('/templates') ||
+    pathname.startsWith('/onboarding')
 
   useEffect(() => {
     if (document.documentElement.classList.contains('dark')) {
@@ -36,25 +47,29 @@ export default function Header() {
                 <span className="text-primary">Tailor</span>
               </span>
             </Link>
-            <div className="hidden md:flex space-x-4">
-              <Link to="/dashboard" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-primary dark:text-slate-400 [&.active]:bg-primary/10 [&.active]:text-primary">Dashboard</Link>
-              <Link to="/generate" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-primary dark:text-slate-400 [&.active]:bg-primary/10 [&.active]:text-primary">Generate</Link>
-              <Link to="/templates" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-primary dark:text-slate-400 [&.active]:bg-primary/10 [&.active]:text-primary">Templates</Link>
-            </div>
+            {isWorkspaceRoute ? null : (
+              <div className="hidden md:flex space-x-4">
+                <Link to="/dashboard" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-primary dark:text-slate-400 [&.active]:bg-primary/10 [&.active]:text-primary">Dashboard</Link>
+                <Link to="/generate" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-primary dark:text-slate-400 [&.active]:bg-primary/10 [&.active]:text-primary">Generate</Link>
+                <Link to="/templates" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-primary dark:text-slate-400 [&.active]:bg-primary/10 [&.active]:text-primary">Templates</Link>
+              </div>
+            )}
           </div>
-          
-          <div className="hidden flex-1 mx-8 max-w-md lg:flex">
-            <div className="relative w-full">
-              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                <span className="material-icons-outlined text-sm text-slate-400">search</span>
-              </span>
-              <input 
-                type="text" 
-                placeholder="Search documents, jobs, or templates..." 
-                className="block w-full rounded-full border border-slate-200 bg-slate-50 py-2 pl-10 pr-3 leading-5 placeholder-slate-400 transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary sm:text-sm dark:border-slate-700 dark:bg-slate-800"
-              />
+
+          {isWorkspaceRoute ? null : (
+            <div className="hidden flex-1 mx-8 max-w-md lg:flex">
+              <div className="relative w-full">
+                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                  <span className="material-icons-outlined text-sm text-slate-400">search</span>
+                </span>
+                <input 
+                  type="text" 
+                  placeholder="Search documents, jobs, or templates..." 
+                  className="block w-full rounded-full border border-slate-200 bg-slate-50 py-2 pl-10 pr-3 leading-5 placeholder-slate-400 transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary sm:text-sm dark:border-slate-700 dark:bg-slate-800"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="flex items-center gap-4">
             <button 

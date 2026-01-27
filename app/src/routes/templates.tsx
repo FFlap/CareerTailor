@@ -7,6 +7,7 @@ import {
 } from '@/lib/typst/renderClient'
 import { api } from '@/lib/convex'
 import { Button } from '@/components/ui/button'
+import SidebarLayout from '@/components/SidebarLayout'
 import { makeCustomTemplateId, withSampleData } from '@/lib/customTemplates'
 import {
   COVER_TEMPLATES,
@@ -49,6 +50,22 @@ const COVER_SOURCES: Record<CoverTemplateId, string> = {
 }
 
 function TemplatesPage() {
+  const { isAuthenticated, isLoading } = useConvexAuth()
+  const showSidebar = isAuthenticated && !isLoading
+
+  if (showSidebar) {
+    return (
+      <SidebarLayout>
+        <AuthLoading>
+          <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
+            <p className="text-sm text-slate-500 dark:text-slate-400">Loading...</p>
+          </div>
+        </AuthLoading>
+        <TemplatesContent />
+      </SidebarLayout>
+    )
+  }
+
   return (
     <main className="min-h-screen bg-slate-50 py-12 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <AuthLoading>

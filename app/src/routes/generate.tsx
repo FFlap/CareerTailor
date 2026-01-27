@@ -10,6 +10,7 @@ import {
 } from 'convex/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
+import SidebarLayout from '@/components/SidebarLayout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -335,28 +336,30 @@ function TemplatePickerModal({
 
 function GeneratePage() {
   return (
-    <main className="min-h-screen bg-slate-50 py-12 dark:bg-slate-900">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <AuthLoading>
-          <div className="flex justify-center py-12">
-             <p className="text-sm text-slate-500 dark:text-slate-400">Loading...</p>
-          </div>
-        </AuthLoading>
+    <>
+      <AuthLoading>
+        <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
+          <p className="text-sm text-slate-500 dark:text-slate-400">Loading...</p>
+        </div>
+      </AuthLoading>
 
-        <Unauthenticated>
-          <div className="mx-auto max-w-md text-center">
+      <Unauthenticated>
+        <main className="min-h-screen bg-slate-50 py-12 dark:bg-slate-900">
+          <div className="mx-auto max-w-md px-4 text-center">
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Sign in required</h1>
             <p className="mt-2 text-slate-600 dark:text-slate-400">
               You need to <Link to="/sign-in" className="font-medium text-primary hover:underline">sign in</Link> to generate documents.
             </p>
           </div>
-        </Unauthenticated>
+        </main>
+      </Unauthenticated>
 
-        <Authenticated>
+      <Authenticated>
+        <SidebarLayout>
           <GenerateContent />
-        </Authenticated>
-      </div>
-    </main>
+        </SidebarLayout>
+      </Authenticated>
+    </>
   )
 }
 
