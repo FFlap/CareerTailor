@@ -13,7 +13,8 @@ const config = defineConfig({
     },
   },
   plugins: [
-    devtools(),
+    // Disable the devtools event bus (default port 42069) to avoid port conflicts in dev environments.
+    devtools({ eventBusConfig: { enabled: false } }),
     nitro({
       preset: 'vercel',
       output: {

@@ -68,6 +68,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     pathname.startsWith('/dashboard') ||
     pathname.startsWith('/generate') ||
     pathname.startsWith('/job-applications') ||
+    pathname.startsWith('/statistics') ||
     pathname.startsWith('/gallery') ||
     pathname.startsWith('/roast') ||
     pathname.startsWith('/templates') ||
@@ -80,7 +81,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <head>
             <HeadContent />
           </head>
-          <body className="min-h-screen bg-background text-foreground">
+          <body className="min-h-screen bg-background text-foreground" suppressHydrationWarning>
             {hideHeader ? null : <Header />}
             {children}
             {import.meta.env.DEV ? (

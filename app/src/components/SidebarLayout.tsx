@@ -7,10 +7,16 @@ const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
   { to: '/generate', label: 'Generate', icon: 'add_box' },
   { to: '/job-applications', label: 'Job Applications', icon: 'work_outline' },
+  { to: '/statistics', label: 'Statistics', icon: 'insights' },
   { to: '/gallery', label: 'Documents Gallery', icon: 'collections' },
   { to: '/roast', label: 'Roast', icon: 'local_fire_department' },
   { to: '/templates', label: 'Templates', icon: 'auto_awesome' },
 ]
+
+
+type SidebarLayoutProps = {
+  children: ReactNode
+}
 
 export default function SidebarLayout({ children }: SidebarLayoutProps) {  const { user } = useUser()
   const [collapsed, setCollapsed] = useState(() => {

@@ -20,6 +20,7 @@ import type * as profiles from "../profiles.js";
 import type * as resumeParsing from "../resumeParsing.js";
 import type * as roast from "../roast.js";
 import type * as settings from "../settings.js";
+import type * as stats from "../stats.js";
 
 import type {
   ApiFromModules,
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   resumeParsing: typeof resumeParsing;
   roast: typeof roast;
   settings: typeof settings;
+  stats: typeof stats;
 }>;
 
 /**
