@@ -33,3 +33,21 @@ export async function convexMutation({ convexUrl, authToken, path, args }) {
   });
   return await parseConvexResponse(response);
 }
+
+export async function convexQuery({ convexUrl, authToken, path, args }) {
+  if (!convexUrl) throw new Error("Missing Convex URL.");
+  const response = await fetch(`${convexUrl}/api/query`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${authToken}`,
+      "Convex-Client": "careertailor-extension"
+    },
+    body: JSON.stringify({
+      path,
+      format: "convex_encoded_json",
+      args: [args || {}]
+    })
+  });
+  return await parseConvexResponse(response);
+}

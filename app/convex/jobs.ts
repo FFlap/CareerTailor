@@ -108,6 +108,53 @@ export const listMyJobs = query({
   },
 })
 
+export const getMyAppliedProgress = query({
+  args: {
+    sinceMs: v.optional(v.number()),
+    untilMs: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx)
+    const now = Date.now()
+    const sinceMs =
+      typeof args.sinceMs === 'number' && Number.isFinite(args.sinceMs)
+        ? Math.max(args.sinceMs, 0)
+        : 0
+    const untilMs =
+      typeof args.untilMs === 'number' && Number.isFinite(args.untilMs)
+        ? Math.max(args.untilMs, sinceMs)
+        : now
+
+    const jobsInWindow = await ctx.db
+      .query('jobs')
+      .withIndex('by_user_updatedAt', (q) => q.eq('userId', userId))
+      .filter((q) =>
+        q.and(
+          q.gte(q.field('updatedAt'), sinceMs),
+          q.lt(q.field('updatedAt'), untilMs),
+        ),
+      )
+      .collect()
+
+    let appliedOrBeyondCount = 0
+    for (const job of jobsInWindow) {
+      if (
+        job.status === 'applied' ||
+        job.status === 'interview' ||
+        job.status === 'accepted' ||
+        job.status === 'ghosted'
+      ) {
+        appliedOrBeyondCount += 1
+      }
+    }
+
+    return {
+      appliedOrBeyondCount,
+      totalTrackedJobs: jobsInWindow.length,
+    }
+  },
+})
+
 export const getMyJobByUrl = query({
   args: { url: v.string() },
   handler: async (ctx, args) => {

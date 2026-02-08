@@ -16,29 +16,47 @@
             <div class="brand-name">CareerTailor</div>
           </div>
         </div>
+        <button class="ghost settings-trigger" id="settingsBtn" type="button" aria-expanded="false">
+          Settings
+        </button>
       </header>
 
-      <section class="card">
-        <div class="toolbar">
+      <section class="card settings-panel is-hidden" id="settingsPanel">
+        <div class="toolbar settings-toolbar">
           <div>
-            <div class="section-title">Account</div>
-            <p class="small">Connect to sync jobs and generate resumes.</p>
-          </div>
-          <div class="toolbar-actions">
-            <button class="primary" id="connectBtn">Connect</button>
+            <div class="section-title">Extension settings</div>
+            <p class="small">Manage connection and quota-based site blocking.</p>
           </div>
         </div>
-      </section>
 
-      <section class="card">
-        <div class="toolbar">
-          <div>
-            <div class="section-title">Settings</div>
-            <p class="small">Connection status</p>
-          </div>
-          <div class="toolbar-actions">
+        <div class="settings-list">
+          <div class="settings-row">
+            <span class="small">Connection</span>
             <span class="badge" id="authStatus">Not connected</span>
           </div>
+
+          <button class="secondary settings-connect" id="connectBtn" type="button">Connect</button>
+
+          <label class="toggle-row" for="blockerEnabled">
+            <span>Enable website blocker until quota is met</span>
+            <input id="blockerEnabled" type="checkbox" />
+          </label>
+
+          <div class="blocker-config is-hidden" id="blockerConfigFields">
+            <label for="requiredAppliedCount">Required applied jobs</label>
+            <input id="requiredAppliedCount" type="number" min="0" step="1" value="5" />
+
+            <label for="blockedDomains">Blocked websites (one per line)</label>
+            <textarea
+              id="blockedDomains"
+              placeholder="youtube.com&#10;reddit.com&#10;news.ycombinator.com"
+            ></textarea>
+
+            <p class="small settings-progress" id="quotaProgressText">Applied today: -- / --</p>
+          </div>
+
+          <button class="primary" id="saveSettingsBtn" type="button">Save settings</button>
+          <span class="small status" id="settingsStatus" role="status"></span>
         </div>
       </section>
 

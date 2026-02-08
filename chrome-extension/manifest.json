@@ -38,7 +38,13 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["pages/auth-callback.html", "pages/auth-callback.js"],
+      "resources": [
+        "pages/auth-callback.html",
+        "pages/auth-callback.js",
+        "pages/blocked.html",
+        "pages/blocked.js",
+        "pages/blocked.css"
+      ],
       "matches": ["<all_urls>"]
     }
   ],

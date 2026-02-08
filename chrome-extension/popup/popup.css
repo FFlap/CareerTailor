@@ -1,7 +1,7 @@
 body {
   width: 480px !important;
   min-width: 480px !important;
-  min-height: 560px;
+  min-height: 600px;
   background: var(--bg-app);
 }
 
@@ -17,6 +17,20 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+}
+
+.settings-trigger {
+  border: 1px solid var(--border-subtle);
+  background: #FFFFFF;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 7px 12px;
+}
+
+.settings-trigger:hover {
+  color: var(--text-primary);
+  border-color: var(--primary);
 }
 
 .brand {
@@ -85,6 +99,77 @@ body {
   background: var(--primary-light);
   color: var(--primary);
   border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.settings-panel {
+  padding-top: 18px;
+}
+
+.settings-panel.is-hidden {
+  display: none;
+}
+
+#jobCard.is-hidden {
+  display: none;
+}
+
+.settings-toolbar {
+  margin-bottom: 12px;
+}
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.settings-connect {
+  align-self: flex-start;
+}
+
+.toggle-row {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: #FFFFFF;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+.toggle-row input[type="checkbox"] {
+  width: auto;
+  accent-color: var(--primary);
+}
+
+#requiredAppliedCount {
+  max-width: 140px;
+}
+
+#blockedDomains {
+  min-height: 88px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  font-size: 12px;
+}
+
+.settings-progress {
+  margin: 2px 0 0 0;
+}
+
+.blocker-config.is-hidden {
+  display: none;
 }
 
 .job-summary {

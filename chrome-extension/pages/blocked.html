@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Website blocked by CareerTailor</title>
+    <link rel="stylesheet" href="../styles/base.css" />
+    <link rel="stylesheet" href="blocked.css" />
+  </head>
+  <body>
+    <main class="blocked-wrap">
+      <section class="card blocked-card">
+        <span class="badge blocked-badge">Focus mode</span>
+        <h1>Website blocked until your job quota is met</h1>
+        <p class="small blocked-copy">
+          This website is currently blocked by your extension settings.
+        </p>
+
+        <div class="blocked-meta">
+          <p><strong>Website:</strong> <span id="blockedDomain">Unknown</span></p>
+          <p><strong>Applied today:</strong> <span id="quotaProgress">0 / 0</span></p>
+          <p class="small" id="blockedReason">Complete more applications to unlock this site.</p>
+        </div>
+
+        <div class="blocked-actions">
+          <button class="primary" id="checkAgainBtn" type="button">Check again</button>
+          <button class="secondary" id="openSettingsBtn" type="button">
+            Open extension settings
+          </button>
+        </div>
+
+        <span class="small status" id="blockedStatus" role="status"></span>
+      </section>
+    </main>
+    <script type="module" src="blocked.js"></script>
+  </body>
+</html>

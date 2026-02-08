@@ -1,8 +1,18 @@
 import { APP_BASE_URL } from "../common/config.js";
 import { setConnectState } from "../common/storage.js";
 
+const settingsBtn = document.getElementById("settingsBtn");
+const settingsPanel = document.getElementById("settingsPanel");
+const settingsStatus = document.getElementById("settingsStatus");
 const authStatusEl = document.getElementById("authStatus");
 const connectBtn = document.getElementById("connectBtn");
+const blockerEnabledInput = document.getElementById("blockerEnabled");
+const blockerConfigFields = document.getElementById("blockerConfigFields");
+const requiredAppliedCountInput = document.getElementById("requiredAppliedCount");
+const blockedDomainsInput = document.getElementById("blockedDomains");
+const quotaProgressText = document.getElementById("quotaProgressText");
+const saveSettingsBtn = document.getElementById("saveSettingsBtn");
+const jobCard = document.getElementById("jobCard");
 
 const jobTitleInput = document.getElementById("jobTitle");
 const jobCompanyInput = document.getElementById("jobCompany");
@@ -21,9 +31,14 @@ const statusText = document.getElementById("statusText");
 
 let currentJob = null;
 let isConnected = false;
+let isSettingsOpen = false;
 
 function setStatus(text) {
-  statusText.textContent = text || "";
+  if (statusText) statusText.textContent = text || "";
+}
+
+function setSettingsStatus(text) {
+  if (settingsStatus) settingsStatus.textContent = text || "";
 }
 
 function setSummaryText(el, value, fallback) {
@@ -37,9 +52,9 @@ function setSummaryText(el, value, fallback) {
 }
 
 function updateSummary() {
-  setSummaryText(jobTitleDisplay, jobTitleInput.value, "Add job title");
-  setSummaryText(jobCompanyDisplay, jobCompanyInput.value, "Add company");
-  setSummaryText(jobUrlDisplay, jobUrlInput.value, "Add job URL");
+  setSummaryText(jobTitleDisplay, jobTitleInput?.value, "Add job title");
+  setSummaryText(jobCompanyDisplay, jobCompanyInput?.value, "Add company");
+  setSummaryText(jobUrlDisplay, jobUrlInput?.value, "Add job URL");
 }
 
 function revealManualEntry() {
@@ -66,13 +81,15 @@ function applyJob(job) {
       ? job.addedAt
       : undefined;
   currentJob = { ...(job || {}), addedAt: incomingAddedAt ?? existingAddedAt ?? Date.now() };
-  jobTitleInput.value = job?.title || "";
-  jobCompanyInput.value = job?.company || "";
-  jobUrlInput.value = job?.url || "";
-  jobDescriptionInput.value = job?.description || "";
+
+  if (jobTitleInput) jobTitleInput.value = job?.title || "";
+  if (jobCompanyInput) jobCompanyInput.value = job?.company || "";
+  if (jobUrlInput) jobUrlInput.value = job?.url || "";
+  if (jobDescriptionInput) jobDescriptionInput.value = job?.description || "";
+
   const sourceLabel =
     job?.source && job.source !== "extension" ? `Detected: ${job.source}` : "Manual entry";
-  jobSourceBadge.textContent = sourceLabel;
+  if (jobSourceBadge) jobSourceBadge.textContent = sourceLabel;
   updateSummary();
 }
 
@@ -82,10 +99,10 @@ function getJobData() {
       ? currentJob.addedAt
       : Date.now();
   return {
-    title: jobTitleInput.value.trim(),
-    company: jobCompanyInput.value.trim(),
-    url: jobUrlInput.value.trim() || currentJob?.url || "",
-    description: jobDescriptionInput.value.trim(),
+    title: jobTitleInput?.value?.trim() || "",
+    company: jobCompanyInput?.value?.trim() || "",
+    url: jobUrlInput?.value?.trim() || currentJob?.url || "",
+    description: jobDescriptionInput?.value?.trim() || "",
     source: currentJob?.source || "extension",
     jobId: currentJob?.jobId || "",
     addedAt
@@ -126,8 +143,12 @@ async function requestActiveTabJob() {
 async function refreshAuthStatus() {
   const response = await chrome.runtime.sendMessage({ type: "GET_AUTH_STATUS" });
   isConnected = Boolean(response?.ok && response.connected);
-  authStatusEl.textContent = isConnected ? "Connected" : "Not connected";
-  connectBtn.textContent = isConnected ? "Reconnect" : "Connect";
+  if (authStatusEl) {
+    authStatusEl.textContent = isConnected ? "Connected" : "Not connected";
+  }
+  if (connectBtn) {
+    connectBtn.textContent = isConnected ? "Reconnect" : "Connect";
+  }
 }
 
 async function openConnectFlow() {
@@ -149,30 +170,165 @@ async function syncJob(job) {
   return response.result;
 }
 
+function parseBlockedDomainsText(text) {
+  return String(text || "")
+    .split(/\n|,/g)
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function setBlockerFieldsVisibility(enabled) {
+  if (!blockerConfigFields) return;
+  blockerConfigFields.classList.toggle("is-hidden", !enabled);
+}
+
+function renderBlockerSettings(settings) {
+  const enabled = Boolean(settings?.enabled);
+  if (blockerEnabledInput) blockerEnabledInput.checked = enabled;
+  setBlockerFieldsVisibility(enabled);
+  if (requiredAppliedCountInput) {
+    const required = Number(settings?.requiredAppliedCount);
+    requiredAppliedCountInput.value = String(
+      Number.isFinite(required) && required >= 0 ? Math.floor(required) : 5
+    );
+  }
+  if (blockedDomainsInput) {
+    blockedDomainsInput.value = Array.isArray(settings?.blockedDomains)
+      ? settings.blockedDomains.join("\n")
+      : "";
+  }
+}
+
+function getBlockerSettingsDraft() {
+  const requiredRaw = Number(requiredAppliedCountInput?.value);
+  return {
+    enabled: Boolean(blockerEnabledInput?.checked),
+    requiredAppliedCount:
+      Number.isFinite(requiredRaw) && requiredRaw >= 0 ? Math.floor(requiredRaw) : 5,
+    blockedDomains: parseBlockedDomainsText(blockedDomainsInput?.value || ""),
+    matchMode: "domain_subdomains",
+    failurePolicy: "open"
+  };
+}
+
+function setSettingsPanelOpen(open) {
+  isSettingsOpen = Boolean(open);
+  if (settingsPanel) {
+    settingsPanel.classList.toggle("is-hidden", !isSettingsOpen);
+  }
+  if (jobCard) {
+    jobCard.classList.toggle("is-hidden", isSettingsOpen);
+  }
+  if (settingsBtn) {
+    settingsBtn.setAttribute("aria-expanded", isSettingsOpen ? "true" : "false");
+  }
+
+  if (isSettingsOpen) {
+    if (window.location.hash !== "#settings") {
+      window.location.hash = "settings";
+    }
+  } else if (window.location.hash === "#settings") {
+    try {
+      history.replaceState(null, "", window.location.pathname);
+    } catch {
+      // ignore
+    }
+  }
+}
+
+async function loadBlockerSettings() {
+  const response = await chrome.runtime.sendMessage({ type: "GET_BLOCKER_SETTINGS" });
+  if (!response?.ok) {
+    throw new Error(response?.error || "Failed to load blocker settings.");
+  }
+  renderBlockerSettings(response.settings);
+}
+
+async function refreshBlockerProgress(force = false) {
+  const response = await chrome.runtime.sendMessage({ type: "GET_BLOCKER_PROGRESS", force });
+  if (!response?.ok) {
+    if (quotaProgressText) quotaProgressText.textContent = "Applied today: unavailable.";
+    return;
+  }
+
+  const applied = Number(response.appliedOrBeyondCount || 0);
+  const required = Number(response.requiredAppliedCount || 0);
+  const quotaMet = Boolean(response.quotaMet);
+  const disconnectedHint = response.connected
+    ? ""
+    : " Connect account to sync; blocking fails open while disconnected.";
+  const metHint = quotaMet ? " Quota met." : "";
+  const errorHint = response.error ? ` ${response.error}` : "";
+  if (quotaProgressText) {
+    quotaProgressText.textContent = `Applied today: ${applied} / ${required}.${metHint}${disconnectedHint}${errorHint}`;
+  }
+}
+
+async function saveBlockerSettings() {
+  setSettingsStatus("Saving settings...");
+  const response = await chrome.runtime.sendMessage({
+    type: "SAVE_BLOCKER_SETTINGS",
+    settings: getBlockerSettingsDraft()
+  });
+  if (!response?.ok) {
+    throw new Error(response?.error || "Failed to save blocker settings.");
+  }
+  renderBlockerSettings(response.settings);
+  setSettingsStatus("Settings saved.");
+  await refreshBlockerProgress(true);
+}
+
 async function init() {
   await refreshAuthStatus();
 
-  connectBtn.addEventListener("click", () => {
+  setSettingsPanelOpen(window.location.hash === "#settings");
+
+  settingsBtn?.addEventListener("click", () => {
+    setSettingsPanelOpen(!isSettingsOpen);
+  });
+
+  connectBtn?.addEventListener("click", () => {
     void openConnectFlow();
   });
 
-  refreshJobBtn.addEventListener("click", async () => {
-    setStatus("Refreshing…");
+  saveSettingsBtn?.addEventListener("click", async () => {
+    try {
+      await saveBlockerSettings();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to save settings.";
+      setSettingsStatus(message);
+    }
+  });
+
+  blockerEnabledInput?.addEventListener("change", () => {
+    setBlockerFieldsVisibility(Boolean(blockerEnabledInput.checked));
+  });
+
+  await loadBlockerSettings().catch((error) => {
+    setSettingsStatus(error instanceof Error ? error.message : "Failed to load settings.");
+  });
+  await refreshBlockerProgress(true);
+
+  refreshJobBtn?.addEventListener("click", async () => {
+    setStatus("Refreshing...");
     const { job, tab } = await requestActiveTabJob();
     if (!job) {
       const tabUrl = tab?.url || "";
-      jobSourceBadge.textContent = isSupportedJobSite(tabUrl)
-        ? "Refresh page to detect job"
-        : "Manual entry";
+      if (jobSourceBadge) {
+        jobSourceBadge.textContent = isSupportedJobSite(tabUrl)
+          ? "Refresh page to detect job"
+          : "Manual entry";
+      }
       setStatus("No job detected. Paste details manually or open a supported job page.");
       updateSummary();
     }
   });
 
-  syncBtn.addEventListener("click", async () => {
-    setStatus("Syncing…");
+  syncBtn?.addEventListener("click", async () => {
+    setStatus("Syncing...");
     try {
       await refreshAuthStatus();
+      await refreshBlockerProgress(false);
       if (!isConnected) {
         setStatus("Connect your account first.");
         await openConnectFlow();
@@ -191,10 +347,11 @@ async function init() {
     }
   });
 
-  generateInAppBtn.addEventListener("click", async () => {
-    setStatus("Opening web app…");
+  generateInAppBtn?.addEventListener("click", async () => {
+    setStatus("Opening web app...");
     try {
       await refreshAuthStatus();
+      await refreshBlockerProgress(false);
       if (!isConnected) {
         setStatus("Connect your account first.");
         await openConnectFlow();
@@ -217,9 +374,9 @@ async function init() {
 
   const manualInputs = [jobTitleInput, jobCompanyInput, jobUrlInput, jobDescriptionInput];
   manualInputs.forEach((input) => {
-    input.addEventListener("input", () => {
+    input?.addEventListener("input", () => {
       updateSummary();
-      if (!currentJob?.source || currentJob.source === "extension") {
+      if ((!currentJob?.source || currentJob.source === "extension") && jobSourceBadge) {
         jobSourceBadge.textContent = "Manual entry";
       }
     });
@@ -231,7 +388,7 @@ async function init() {
   }
 
   const { job, tab } = await requestActiveTabJob();
-  if (!job) {
+  if (!job && jobSourceBadge) {
     const tabUrl = tab?.url || "";
     jobSourceBadge.textContent = isSupportedJobSite(tabUrl)
       ? "Refresh page to detect job"

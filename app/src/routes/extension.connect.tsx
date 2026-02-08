@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { SignIn, SignedIn, SignedOut, useAuth } from '@clerk/tanstack-react-start'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,14 +10,16 @@ export const Route = createFileRoute('/extension/connect')({
     redirect_uri:
       typeof search.redirect_uri === 'string' ? search.redirect_uri : undefined,
     state: typeof search.state === 'string' ? search.state : undefined,
+    auto: typeof search.auto === 'string' ? search.auto : undefined,
   }),
   component: ExtensionConnectPage,
 })
 
 function ExtensionConnectPage() {
-  const { getToken } = useAuth()
-  const { redirect_uri, state } = Route.useSearch()
+  const { getToken, isSignedIn } = useAuth()
+  const { redirect_uri, state, auto } = Route.useSearch()
   const [status, setStatus] = useState<string>('')
+  const autoConnectTriedRef = useRef(false)
 
   const redirectUri = useMemo(() => {
     const raw = (redirect_uri || '').trim()
@@ -68,6 +70,17 @@ function ExtensionConnectPage() {
       setStatus(error instanceof Error ? error.message : 'Failed to connect.')
     }
   }
+
+  useEffect(() => {
+    if (auto !== '1') return
+    if (!isSignedIn) return
+    if (!redirectUri) return
+    if (!state?.trim()) return
+    if (autoConnectTriedRef.current) return
+
+    autoConnectTriedRef.current = true
+    void connect()
+  }, [auto, isSignedIn, redirectUri, state])
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
