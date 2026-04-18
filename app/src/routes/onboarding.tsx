@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/lib/convex'
 import { extractTextFromResume } from '@/lib/extractText'
+import { DEFAULT_OPENROUTER_MODEL } from '@/lib/openrouterModels'
 import { isAcceptedMimeType, type ResumeUploadState } from '@/lib/resumeUpload'
 
 export const Route = createFileRoute('/onboarding')({
@@ -199,7 +200,7 @@ function OnboardingContent() {
       const text = await extractTextFromResume(file)
 
       setUploadState({ status: 'parsing', fileName: file.name })
-      const parsed = await parseResume({ resumeText: text, model: 'xiaomi/mimo-v2-flash:free' })
+      const parsed = await parseResume({ resumeText: text, model: DEFAULT_OPENROUTER_MODEL })
 
       // Merge parsed data into profile state
       setProfile((prev) => mergeProfileData(prev, parsed))
@@ -716,5 +717,4 @@ function OnboardingContent() {
     </div>
   )
 }
-
 

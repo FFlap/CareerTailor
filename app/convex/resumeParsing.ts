@@ -2,11 +2,12 @@ import { action } from './_generated/server'
 import { v } from 'convex/values'
 import { requireUserId } from './lib/auth'
 import { callOpenRouterChat, safeJsonParse } from './lib/openrouter'
+import { openRouterModelIdValidator } from './lib/openrouterModels'
 
 export const parseResumeText = action({
   args: {
     resumeText: v.string(),
-    model: v.string(),
+    model: openRouterModelIdValidator,
   },
   handler: async (ctx, args) => {
     await requireUserId(ctx)
@@ -53,7 +54,7 @@ ${args.resumeText}`
 export const parseCoverLetterText = action({
   args: {
     coverLetterText: v.string(),
-    model: v.string(),
+    model: openRouterModelIdValidator,
   },
   handler: async (ctx, args) => {
     await requireUserId(ctx)

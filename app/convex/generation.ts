@@ -36,6 +36,94 @@ const createGeneratedDocumentRef = makeFunctionReference<'mutation'>(
 )
 const getMyTemplateRef = makeFunctionReference<'query'>('customTemplates:getMyTemplate')
 
+function normalizeForComparison(value: unknown) {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function profileHasCompany(profile: any, company: string) {
+  const targetCompany = normalizeForComparison(company)
+  if (!targetCompany) return true
+  const experience = Array.isArray(profile?.experience) ? profile.experience : []
+  return experience.some(
+    (role: any) => normalizeForComparison(role?.company) === targetCompany,
+  )
+}
+
+function removeUnsupportedTargetCompanyExperience(resume: any, profile: any, job: any) {
+  const targetCompany = normalizeForComparison(job?.company)
+  if (!targetCompany || profileHasCompany(profile, job?.company)) return resume
+  if (!Array.isArray(resume?.experience)) return resume
+
+  return {
+    ...resume,
+    experience: resume.experience.filter(
+      (role: any) => normalizeForComparison(role?.company) !== targetCompany,
+    ),
+  }
+}
+
+function hasProjectContent(project: any) {
+  return Boolean(
+    String(project?.name ?? '').trim() ||
+      String(project?.link ?? '').trim() ||
+      (Array.isArray(project?.technologies) && project.technologies.length) ||
+      (Array.isArray(project?.bullets) && project.bullets.length),
+  )
+}
+
+function mergeGeneratedProjectsWithProfile(resume: any, profile: any) {
+  const profileProjects = Array.isArray(profile?.projects)
+    ? profile.projects.filter(hasProjectContent)
+    : []
+  if (!profileProjects.length) return resume
+
+  const generatedProjects = Array.isArray(resume?.projects)
+    ? resume.projects.filter(hasProjectContent)
+    : []
+
+  const mergedProjects = profileProjects.map((profileProject: any) => {
+    const profileName = normalizeForComparison(profileProject?.name)
+    const generatedProject = generatedProjects.find(
+      (project: any) =>
+        profileName && normalizeForComparison(project?.name) === profileName,
+    )
+    if (!generatedProject) return profileProject
+
+    return {
+      ...profileProject,
+      ...generatedProject,
+      name: profileProject.name || generatedProject.name || '',
+      technologies:
+        Array.isArray(generatedProject.technologies) &&
+        generatedProject.technologies.length
+          ? generatedProject.technologies
+          : profileProject.technologies || [],
+      link: profileProject.link || generatedProject.link || '',
+      bullets:
+        Array.isArray(generatedProject.bullets) && generatedProject.bullets.length
+          ? generatedProject.bullets
+          : profileProject.bullets || [],
+    }
+  })
+
+  return {
+    ...resume,
+    projects: mergedProjects,
+  }
+}
+
+function normalizeGeneratedResume(resume: any, profile: any, job: any) {
+  return mergeGeneratedProjectsWithProfile(
+    removeUnsupportedTargetCompanyExperience(resume, profile, job),
+    profile,
+  )
+}
+
 export const generateDocuments = action({
   args: {
     job: jobInput,
@@ -130,6 +218,13 @@ export const generateDocuments = action({
         'Do not include trailing commas.',
         'Replace line breaks in strings with \\n.',
         'Avoid fabrication. Prefer quantified impact when the profile includes metrics.',
+        'Treat user_profile as the ONLY source of the candidate\'s factual experience, education, skills, projects, contact details, dates, employers, and achievements.',
+        'Treat job as the TARGET ROLE only. Use the job title, company, and description to tailor wording, keywords, ordering, summary, and emphasis.',
+        'Never copy responsibilities, qualifications, technologies, employers, projects, or achievements from the job description into the resume unless they are clearly supported by user_profile.',
+        'Never add the target company or target job title as past or current experience unless user_profile already contains that employer and role.',
+        'Always include projects from user_profile.projects in the projects array when they exist. You may tailor their bullets and ordering for relevance, but do not drop them.',
+        'Do not invent projects from the job description. Every project must come from user_profile.projects.',
+        'If the job description mentions requirements missing from user_profile, do not invent them. Emphasize adjacent supported skills instead.',
         `Output schema: ${JSON.stringify(
           {
             resume: {
@@ -186,7 +281,11 @@ export const generateDocuments = action({
         maxTokens: 4096,
       })
       const parsed = (await parseJsonWithRepair(raw, 4096)) as any
-      const resume = parsed?.resume ?? parsed
+      const resume = normalizeGeneratedResume(
+        parsed?.resume ?? parsed,
+        profile,
+        args.job,
+      )
 
       const typstSource = customResumeSource
         ? buildCustomResumeTypstSource({

@@ -25,8 +25,8 @@ import {
 } from '@/lib/customTemplates'
 import { renderTypstToCanvasInBrowser } from '@/lib/typst/renderClient'
 import {
-  OPENROUTER_FREE_MODELS,
-  type OpenRouterModelId,
+  DEFAULT_OPENROUTER_MODEL,
+  DEFAULT_OPENROUTER_MODEL_LABEL,
 } from '@/lib/openrouterModels'
 import {
   COVER_TEMPLATES,
@@ -413,13 +413,10 @@ function GenerateContent() {
     }))
   }, [existingJob])
 
-  const defaultsApplied = useRef(false)
-
   const [resumeTemplateId, setResumeTemplateId] = useState<ResumeTemplateSelection>('none')
   const [coverTemplateId, setCoverTemplateId] = useState<CoverTemplateSelection>('none')
   const [resumePickerOpen, setResumePickerOpen] = useState(false)
   const [coverPickerOpen, setCoverPickerOpen] = useState(false)
-  const [model, setModel] = useState<OpenRouterModelId>(OPENROUTER_FREE_MODELS[0].id)
   const [tone, setTone] = useState<string>('professional')
   const [targetLength, setTargetLength] = useState<string>('1_page')
   const [status, setStatus] = useState<string>('')
@@ -510,16 +507,6 @@ function GenerateContent() {
         : COVER_TEMPLATES.find((t) => t.id === coverTemplateId)?.label ||
           'Select a cover letter'
 
-  useEffect(() => {
-    if (!settings || defaultsApplied.current) return
-    const savedModel = settings.defaultModel as string
-    const isValidModel = OPENROUTER_FREE_MODELS.some((m) => m.id === savedModel)
-    setModel(
-      isValidModel ? (savedModel as OpenRouterModelId) : OPENROUTER_FREE_MODELS[0].id,
-    )
-    defaultsApplied.current = true
-  }, [settings])
-
   async function onGenerate() {
     if (!job.url.trim()) {
       setStatus('Job URL is required.')
@@ -570,7 +557,7 @@ function GenerateContent() {
         coverTemplateId: coverTemplateForRequest,
         customResumeTemplateId,
         customCoverTemplateId,
-        model,
+        model: DEFAULT_OPENROUTER_MODEL,
         preferences: { tone, targetLength },
       })
       const nextId = result.resumeId || result.coverId
@@ -755,19 +742,10 @@ function GenerateContent() {
               </CardHeader>
               <CardContent className="space-y-6 p-6">
                 <div className="space-y-2">
-                  <Label htmlFor="model" className="text-xs font-semibold uppercase tracking-wider text-slate-500">AI Model</Label>
-                  <select
-                    id="model"
-                    className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-950"
-                    value={model}
-                    onChange={(e) => setModel(e.target.value as OpenRouterModelId)}
-                  >
-                    {OPENROUTER_FREE_MODELS.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.label}
-                      </option>
-                    ))}
-                  </select>
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">AI Model</Label>
+                  <p className="flex h-10 w-full items-center rounded-md border border-input bg-white px-3 py-2 text-sm text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+                    {DEFAULT_OPENROUTER_MODEL_LABEL}
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

@@ -1,13 +1,17 @@
 import { mutation, query } from './_generated/server'
 
 import { requireUserId } from './lib/auth'
-import { openRouterModelIdValidator } from './lib/openrouterModels'
+import {
+  DEFAULT_OPENROUTER_MODEL,
+  isOpenRouterModelId,
+  openRouterModelIdValidator,
+} from './lib/openrouterModels'
 import { coverTemplateIdValidator, resumeTemplateIdValidator } from './lib/templates'
 
 const DEFAULTS = {
   defaultResumeTemplateId: 'basic_resume',
   defaultCoverTemplateId: 'modern_cv_cover',
-  defaultModel: 'xiaomi/mimo-v2-flash:free',
+  defaultModel: DEFAULT_OPENROUTER_MODEL,
 } as const
 
 export const mySettings = query({
@@ -24,7 +28,9 @@ export const mySettings = query({
     return {
       defaultResumeTemplateId: settings.defaultResumeTemplateId,
       defaultCoverTemplateId: settings.defaultCoverTemplateId,
-      defaultModel: settings.defaultModel,
+      defaultModel: isOpenRouterModelId(settings.defaultModel)
+        ? settings.defaultModel
+        : DEFAULT_OPENROUTER_MODEL,
       exists: true,
     }
   },

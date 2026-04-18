@@ -37,11 +37,7 @@ function normalizeNumber(value: unknown, fallback: number) {
 }
 
 function normalizeFontName(value?: string) {
-  const raw = (value || '').toLowerCase()
-  if (raw.includes('roboto')) return 'Roboto'
-  if (raw.includes('source sans 3') || raw.includes('sourcesans3')) return 'Source Sans 3'
-  if (raw.includes('source sans')) return 'Source Sans Pro'
-  return 'Source Sans 3'
+  return 'New Computer Modern'
 }
 
 function normalizeAlign(value?: string) {
@@ -315,7 +311,7 @@ export const createTemplateFromImage = action({
       'Convert the layout spec into JSON design tokens. Return JSON only.',
       'Schema:',
       '{"page": {"margin_pt": {"top": 36, "right": 36, "bottom": 36, "left": 36}},',
-      '"typography": {"body_font": "Source Sans 3", "heading_font": "Source Sans 3", "body_size_pt": 10.5, "heading_size_pt": 12, "name_size_pt": 20},',
+      '"typography": {"body_font": "New Computer Modern", "heading_font": "New Computer Modern", "body_size_pt": 10.5, "heading_size_pt": 12, "name_size_pt": 20},',
       '"header": {"align": "left", "spacing_pt": 6},',
       '"accents": {"color": "#4F46E5"}}',
       'Use pt units as numbers. Use hex colors like #RRGGBB.',

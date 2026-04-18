@@ -46,16 +46,12 @@ const ASSET_TEXTS: Record<string, string> = {
 }
 
 const GOOGLE_FONT_URLS = [
-  'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/sourcesanspro/SourceSansPro-Regular.ttf',
-  'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/sourcesanspro/SourceSansPro-Italic.ttf',
-  'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/sourcesanspro/SourceSansPro-Bold.ttf',
-  'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/sourcesanspro/SourceSansPro-BoldItalic.ttf',
-  'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/sourcesans3/SourceSans3-VariableFont_wght.ttf',
-  'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/sourcesans3/SourceSans3-Italic-VariableFont_wght.ttf',
-  'https://cdn.jsdelivr.net/gh/google/fonts@main/apache/roboto/Roboto-Regular.ttf',
-  'https://cdn.jsdelivr.net/gh/google/fonts@main/apache/roboto/Roboto-Italic.ttf',
-  'https://cdn.jsdelivr.net/gh/google/fonts@main/apache/roboto/Roboto-Bold.ttf',
-  'https://cdn.jsdelivr.net/gh/google/fonts@main/apache/roboto/Roboto-BoldItalic.ttf',
+  'https://raw.githubusercontent.com/google/fonts/main/ofl/sourcesans3/SourceSans3%5Bwght%5D.ttf',
+  'https://raw.githubusercontent.com/google/fonts/main/ofl/sourcesans3/SourceSans3-Italic%5Bwght%5D.ttf',
+  'https://raw.githubusercontent.com/google/fonts/main/ofl/opensans/OpenSans%5Bwdth%2Cwght%5D.ttf',
+  'https://raw.githubusercontent.com/google/fonts/main/ofl/opensans/OpenSans-Italic%5Bwdth%2Cwght%5D.ttf',
+  'https://raw.githubusercontent.com/google/fonts/main/ofl/roboto/Roboto%5Bwdth%2Cwght%5D.ttf',
+  'https://raw.githubusercontent.com/google/fonts/main/ofl/roboto/Roboto-Italic%5Bwdth%2Cwght%5D.ttf',
 ]
 
 const assetBytesCache = new Map<string, Promise<Uint8Array>>()
@@ -66,7 +62,7 @@ async function getAssetBytes(assetRel: string): Promise<Uint8Array> {
 
   const promise = (async () => {
     if (assetRel in ASSET_TEXTS) {
-      return new TextEncoder().encode(ASSET_TEXTS[assetRel]!)
+      return new TextEncoder().encode(normalizeTypstSource(ASSET_TEXTS[assetRel]!))
     }
     if (assetRel in ASSET_URLS) {
       const res = await fetch(ASSET_URLS[assetRel]!)
@@ -221,8 +217,14 @@ async function compileTypst(input: RenderInput, format: 'pdf' | 'vector'): Promi
     })
 
     const diagnostics: any[] | undefined = result?.diagnostics
-    if (diagnostics?.length) {
-      const message = diagnostics
+    const errors = diagnostics?.filter((diagnostic) => {
+      const severity = String(
+        diagnostic?.severity || diagnostic?.level || diagnostic?.kind || ''
+      ).toLowerCase()
+      return severity !== 'warning' && severity !== 'warn'
+    })
+    if (errors?.length) {
+      const message = errors
         .map((d) => d?.message || d?.text || JSON.stringify(d))
         .filter(Boolean)
         .join('; ')
@@ -268,10 +270,24 @@ export async function renderTypstToCanvasInBrowser(
 }
 
 function normalizeTypstSource(source: string) {
-  let updated = normalizeTupleFields(source, ['positions', 'keywords', 'position'])
+  let updated = normalizeFontFamilies(source)
+  updated = normalizeEmptyLinks(updated)
+  updated = normalizeTupleFields(updated, ['positions', 'keywords', 'position'])
   updated = normalizeFunctionTuple(updated, 'tags')
   updated = normalizeFunctionTuple(updated, 'item-pills')
   return updated
+}
+
+function normalizeFontFamilies(source: string) {
+  return source
+    .replace(/"Source Sans Pro"/gi, '"New Computer Modern"')
+    .replace(/"Source Sans 3"/gi, '"New Computer Modern"')
+    .replace(/"Roboto"/gi, '"New Computer Modern"')
+    .replace(/"Open Sans"/gi, '"New Computer Modern"')
+}
+
+function normalizeEmptyLinks(source: string) {
+  return source.replace(/#link\(\s*""\s*\)\s*\[([^\]]*)\]/g, '$1')
 }
 
 function normalizeTupleFields(source: string, fields: string[]) {

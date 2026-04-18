@@ -3,8 +3,9 @@ import { v } from 'convex/values'
 
 import { requireUserId } from './lib/auth'
 import { callOpenRouterChat, safeJsonParse } from './lib/openrouter'
+import { DEFAULT_OPENROUTER_MODEL } from './lib/openrouterModels'
 
-const DEFAULT_MODEL = 'xiaomi/mimo-v2-flash:free'
+const DEFAULT_MODEL = DEFAULT_OPENROUTER_MODEL
 const MIN_COMMENTS = 12
 const OUTPUT_TOKENS: number | null = null
 const REPAIR_TOKENS = 1200

@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/lib/convex'
-import { OPENROUTER_FREE_MODELS } from '@/lib/openrouterModels'
+import { DEFAULT_OPENROUTER_MODEL } from '@/lib/openrouterModels'
 import { extractTextFromPdfBytes } from '@/lib/extractText'
 import { stripTypst } from '@/lib/typst/stripTypst'
 import { cn } from '@/lib/utils'
@@ -233,7 +233,7 @@ function EditorContent() {
   const autoApplyTimeout = useRef<number | null>(null)
   const structuredJsonRef = useRef<string>('')
   const lastDocIdRef = useRef<string | null>(null)
-  const defaultModel = OPENROUTER_FREE_MODELS[0]?.id ?? 'xiaomi/mimo-v2-flash:free'
+  const defaultModel = DEFAULT_OPENROUTER_MODEL
 
   useEffect(() => {
     if (!doc || hasInitialized.current) return
