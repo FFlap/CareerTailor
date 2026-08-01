@@ -6,7 +6,9 @@
     "dev": "vite dev --host 127.0.0.1 --port 3000",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run --exclude \"tests/**/*.live.test.ts\"",
+    "test:live": "vitest run tests/**/*.live.test.ts",
+    "test:all": "vitest run"
   },
   "dependencies": {
     "@clerk/tanstack-react-start": "^0.23.4",

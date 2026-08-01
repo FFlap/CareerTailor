@@ -3,8 +3,14 @@ import { v } from 'convex/values'
 import { makeFunctionReference } from 'convex/server'
 
 import { requireUserId } from './lib/auth'
-import { callOpenRouterChat, safeJsonParse } from './lib/openrouter'
-import { openRouterModelIdValidator } from './lib/openrouterModels'
+import { callChatModel, safeJsonParse } from './lib/llm'
+import { DEFAULT_MODEL, modelIdValidator } from './lib/models'
+import {
+  coverLetterPreferenceInstructions,
+  enforceCoverLetterLength,
+  resumePreferenceInstructions,
+} from './lib/preferences'
+import { normalizeGeneratedResume } from './lib/resumeNormalize'
 import {
   buildCoverLetterTypstSource,
   buildResumeTypstSource,
@@ -36,94 +42,6 @@ const createGeneratedDocumentRef = makeFunctionReference<'mutation'>(
 )
 const getMyTemplateRef = makeFunctionReference<'query'>('customTemplates:getMyTemplate')
 
-function normalizeForComparison(value: unknown) {
-  return String(value ?? '')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-function profileHasCompany(profile: any, company: string) {
-  const targetCompany = normalizeForComparison(company)
-  if (!targetCompany) return true
-  const experience = Array.isArray(profile?.experience) ? profile.experience : []
-  return experience.some(
-    (role: any) => normalizeForComparison(role?.company) === targetCompany,
-  )
-}
-
-function removeUnsupportedTargetCompanyExperience(resume: any, profile: any, job: any) {
-  const targetCompany = normalizeForComparison(job?.company)
-  if (!targetCompany || profileHasCompany(profile, job?.company)) return resume
-  if (!Array.isArray(resume?.experience)) return resume
-
-  return {
-    ...resume,
-    experience: resume.experience.filter(
-      (role: any) => normalizeForComparison(role?.company) !== targetCompany,
-    ),
-  }
-}
-
-function hasProjectContent(project: any) {
-  return Boolean(
-    String(project?.name ?? '').trim() ||
-      String(project?.link ?? '').trim() ||
-      (Array.isArray(project?.technologies) && project.technologies.length) ||
-      (Array.isArray(project?.bullets) && project.bullets.length),
-  )
-}
-
-function mergeGeneratedProjectsWithProfile(resume: any, profile: any) {
-  const profileProjects = Array.isArray(profile?.projects)
-    ? profile.projects.filter(hasProjectContent)
-    : []
-  if (!profileProjects.length) return resume
-
-  const generatedProjects = Array.isArray(resume?.projects)
-    ? resume.projects.filter(hasProjectContent)
-    : []
-
-  const mergedProjects = profileProjects.map((profileProject: any) => {
-    const profileName = normalizeForComparison(profileProject?.name)
-    const generatedProject = generatedProjects.find(
-      (project: any) =>
-        profileName && normalizeForComparison(project?.name) === profileName,
-    )
-    if (!generatedProject) return profileProject
-
-    return {
-      ...profileProject,
-      ...generatedProject,
-      name: profileProject.name || generatedProject.name || '',
-      technologies:
-        Array.isArray(generatedProject.technologies) &&
-        generatedProject.technologies.length
-          ? generatedProject.technologies
-          : profileProject.technologies || [],
-      link: profileProject.link || generatedProject.link || '',
-      bullets:
-        Array.isArray(generatedProject.bullets) && generatedProject.bullets.length
-          ? generatedProject.bullets
-          : profileProject.bullets || [],
-    }
-  })
-
-  return {
-    ...resume,
-    projects: mergedProjects,
-  }
-}
-
-function normalizeGeneratedResume(resume: any, profile: any, job: any) {
-  return mergeGeneratedProjectsWithProfile(
-    removeUnsupportedTargetCompanyExperience(resume, profile, job),
-    profile,
-  )
-}
-
 export const generateDocuments = action({
   args: {
     job: jobInput,
@@ -136,16 +54,13 @@ export const generateDocuments = action({
     coverTemplateId: coverTemplateIdValidator,
     customResumeTemplateId: v.optional(v.id('customTemplates')),
     customCoverTemplateId: v.optional(v.id('customTemplates')),
-    model: openRouterModelIdValidator,
+    model: v.optional(modelIdValidator),
     preferences: preferencesInput,
   },
   handler: async (ctx, args) => {
     await requireUserId(ctx)
 
-    const openRouterKey = process.env.OPENROUTER_API_KEY
-    if (!openRouterKey) {
-      throw new Error('Missing OPENROUTER_API_KEY server env var.')
-    }
+    const model = args.model ?? DEFAULT_MODEL
 
     const profileDoc = await ctx.runQuery(myProfileRef, {})
     const profile = (profileDoc as any)?.profile
@@ -185,9 +100,8 @@ export const generateDocuments = action({
           'Do not add commentary, markdown, or code fences.',
           'Preserve the original structure and values as much as possible.',
         ].join('\n')
-        const repaired = await callOpenRouterChat({
-          apiKey: openRouterKey!,
-          model: args.model,
+        const repaired = await callChatModel({
+          model,
           messages: [
             { role: 'system', content: 'You fix invalid JSON.' },
             { role: 'user', content: `${fixPrompt}\n\nJSON:\n${raw}` },
@@ -225,6 +139,7 @@ export const generateDocuments = action({
         'Always include projects from user_profile.projects in the projects array when they exist. You may tailor their bullets and ordering for relevance, but do not drop them.',
         'Do not invent projects from the job description. Every project must come from user_profile.projects.',
         'If the job description mentions requirements missing from user_profile, do not invent them. Emphasize adjacent supported skills instead.',
+        ...resumePreferenceInstructions(args.preferences),
         `Output schema: ${JSON.stringify(
           {
             resume: {
@@ -273,9 +188,8 @@ export const generateDocuments = action({
         `Input: ${JSON.stringify(baseInput)}`,
       ].join('\n')
 
-      const raw = await callOpenRouterChat({
-        apiKey: openRouterKey,
-        model: args.model,
+      const raw = await callChatModel({
+        model,
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.3,
         maxTokens: 4096,
@@ -285,6 +199,7 @@ export const generateDocuments = action({
         parsed?.resume ?? parsed,
         profile,
         args.job,
+        args.preferences,
       )
 
       const typstSource = customResumeSource
@@ -305,7 +220,7 @@ export const generateDocuments = action({
         templateId: customResumeSource
           ? `custom:${args.customResumeTemplateId}`
           : args.resumeTemplateId,
-        llmModel: args.model,
+        llmModel: model,
         tone: args.preferences.tone,
         targetLength: args.preferences.targetLength,
         data: resume,
@@ -334,6 +249,7 @@ export const generateDocuments = action({
         'Do not include trailing commas.',
         'Replace line breaks in strings with \\n.',
         'Avoid fabrication. Keep it concise and role-specific.',
+        ...coverLetterPreferenceInstructions(args.preferences),
         `Output schema: ${JSON.stringify(
           {
             cover_letter: {
@@ -349,15 +265,17 @@ export const generateDocuments = action({
         `Input: ${JSON.stringify(baseInput)}`,
       ].join('\n')
 
-      const raw = await callOpenRouterChat({
-        apiKey: openRouterKey,
-        model: args.model,
+      const raw = await callChatModel({
+        model,
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.4,
         maxTokens: 2048,
       })
       const parsed = (await parseJsonWithRepair(raw, 2048)) as any
-      const coverLetter = parsed?.cover_letter ?? parsed
+      const coverLetter = enforceCoverLetterLength(
+        parsed?.cover_letter ?? parsed,
+        args.preferences.targetLength,
+      )
 
       const typstSource = customCoverSource
         ? buildCustomCoverLetterTypstSource({
@@ -379,7 +297,7 @@ export const generateDocuments = action({
         templateId: customCoverSource
           ? `custom:${args.customCoverTemplateId}`
           : args.coverTemplateId,
-        llmModel: args.model,
+        llmModel: model,
         tone: args.preferences.tone,
         targetLength: args.preferences.targetLength,
         data: coverLetter,

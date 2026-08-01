@@ -3,11 +3,11 @@ import { v } from 'convex/values'
 import { makeFunctionReference } from 'convex/server'
 
 import { requireUserId } from './lib/auth'
-import { callOpenRouterChat, safeJsonParse } from './lib/openrouter'
+import { callChatModel, safeJsonParse } from './lib/llm'
+import { IMAGE_MODEL } from './lib/models'
 
 const MAX_TYPST_SOURCE_LENGTH = 400_000
 const MAX_IMAGE_DATA_URL_LENGTH = 6_000_000
-const IMAGE_TEMPLATE_MODEL = 'allenai/molmo-2-8b:free'
 
 const templateTypeValidator = v.union(
   v.literal('resume'),
@@ -263,11 +263,6 @@ export const createTemplateFromImage = action({
   handler: async (ctx, args) => {
     await requireUserId(ctx)
 
-    const openRouterKey = process.env.OPENROUTER_API_KEY
-    if (!openRouterKey) {
-      throw new Error('Missing OPENROUTER_API_KEY server env var.')
-    }
-
     const imageDataUrl = args.imageDataUrl.trim()
     if (!imageDataUrl.startsWith('data:image/')) {
       throw new Error('Image must be a data URL.')
@@ -283,9 +278,8 @@ export const createTemplateFromImage = action({
       'header (position, alignment, columns), sections (order, titles, spacing), accents (colors, rules).',
     ].join('\n')
 
-    const layoutRaw = await callOpenRouterChat({
-      apiKey: openRouterKey,
-      model: IMAGE_TEMPLATE_MODEL,
+    const layoutRaw = await callChatModel({
+      model: IMAGE_MODEL,
       messages: [
         { role: 'system', content: 'You analyze document layouts for resume and cover letters.' },
         {
@@ -320,9 +314,8 @@ export const createTemplateFromImage = action({
 
     let tokens: LayoutTokens = {}
     try {
-      const tokenRaw = await callOpenRouterChat({
-        apiKey: openRouterKey,
-        model: IMAGE_TEMPLATE_MODEL,
+      const tokenRaw = await callChatModel({
+        model: IMAGE_MODEL,
         messages: [
           { role: 'system', content: 'You map layout specs into design tokens.' },
           { role: 'user', content: tokenPrompt },

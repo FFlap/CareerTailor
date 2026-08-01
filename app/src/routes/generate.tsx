@@ -25,9 +25,10 @@ import {
 } from '@/lib/customTemplates'
 import { renderTypstToCanvasInBrowser } from '@/lib/typst/renderClient'
 import {
-  DEFAULT_OPENROUTER_MODEL,
-  DEFAULT_OPENROUTER_MODEL_LABEL,
-} from '@/lib/openrouterModels'
+  DEFAULT_MODEL,
+  DEFAULT_MODEL_LABEL,
+} from '@/lib/models'
+import { useElapsedProgress } from '@/lib/useElapsedProgress'
 import {
   COVER_TEMPLATES,
   RESUME_TEMPLATES,
@@ -421,6 +422,7 @@ function GenerateContent() {
   const [targetLength, setTargetLength] = useState<string>('1_page')
   const [status, setStatus] = useState<string>('')
   const [isGenerating, setIsGenerating] = useState(false)
+  const progress = useElapsedProgress(isGenerating)
 
   const customResumeTemplates = useMemo(
     () => (customTemplates ?? []).filter((template: any) => template.type === 'resume'),
@@ -548,7 +550,7 @@ function GenerateContent() {
         : coverTemplateId
 
     setIsGenerating(true)
-    setStatus('Generating…')
+    setStatus('')
     try {
       const result = await generate({
         job,
@@ -557,7 +559,7 @@ function GenerateContent() {
         coverTemplateId: coverTemplateForRequest,
         customResumeTemplateId,
         customCoverTemplateId,
-        model: DEFAULT_OPENROUTER_MODEL,
+        model: DEFAULT_MODEL,
         preferences: { tone, targetLength },
       })
       const nextId = result.resumeId || result.coverId
@@ -744,7 +746,7 @@ function GenerateContent() {
                 <div className="space-y-2">
                   <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">AI Model</Label>
                   <p className="flex h-10 w-full items-center rounded-md border border-input bg-white px-3 py-2 text-sm text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-                    {DEFAULT_OPENROUTER_MODEL_LABEL}
+                    {DEFAULT_MODEL_LABEL}
                   </p>
                 </div>
 
@@ -814,14 +816,20 @@ function GenerateContent() {
       {profile?.personal?.fullName && (
         <div className="sticky bottom-4 z-10 rounded-xl border border-slate-200 bg-white/80 p-4 shadow-lg backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/80">
           <div className="flex items-center justify-between">
-              <div className="text-sm text-slate-500 dark:text-slate-400">
-                {status && (
+              <div className="text-sm text-slate-500 dark:text-slate-400" aria-live="polite">
+                {isGenerating ? (
+                  <span className="flex items-center gap-2 font-medium text-slate-700 dark:text-slate-300">
+                    <span className="material-icons-outlined animate-spin text-base">sync</span>
+                    {progress.label}
+                    <span className="tabular-nums text-slate-400">{progress.elapsedLabel}</span>
+                  </span>
+                ) : status ? (
                   <span className={`font-medium ${
                     status.includes('failed') || status.includes('required') ? 'text-red-500' : 'text-slate-700 dark:text-slate-300'
                   }`}>
                     {status}
                   </span>
-                )}
+                ) : null}
               </div>
               <Button
               size="lg"

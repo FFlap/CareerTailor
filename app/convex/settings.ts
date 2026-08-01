@@ -1,17 +1,13 @@
 import { mutation, query } from './_generated/server'
 
 import { requireUserId } from './lib/auth'
-import {
-  DEFAULT_OPENROUTER_MODEL,
-  isOpenRouterModelId,
-  openRouterModelIdValidator,
-} from './lib/openrouterModels'
+import { DEFAULT_MODEL, modelIdValidator, normalizeModelId } from './lib/models'
 import { coverTemplateIdValidator, resumeTemplateIdValidator } from './lib/templates'
 
 const DEFAULTS = {
   defaultResumeTemplateId: 'basic_resume',
   defaultCoverTemplateId: 'modern_cv_cover',
-  defaultModel: DEFAULT_OPENROUTER_MODEL,
+  defaultModel: DEFAULT_MODEL,
 } as const
 
 export const mySettings = query({
@@ -28,9 +24,7 @@ export const mySettings = query({
     return {
       defaultResumeTemplateId: settings.defaultResumeTemplateId,
       defaultCoverTemplateId: settings.defaultCoverTemplateId,
-      defaultModel: isOpenRouterModelId(settings.defaultModel)
-        ? settings.defaultModel
-        : DEFAULT_OPENROUTER_MODEL,
+      defaultModel: normalizeModelId(settings.defaultModel),
       exists: true,
     }
   },
@@ -40,7 +34,7 @@ export const upsertMySettings = mutation({
   args: {
     defaultResumeTemplateId: resumeTemplateIdValidator,
     defaultCoverTemplateId: coverTemplateIdValidator,
-    defaultModel: openRouterModelIdValidator,
+    defaultModel: modelIdValidator,
   },
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx)

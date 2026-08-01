@@ -2,10 +2,8 @@ import { action } from './_generated/server'
 import { v } from 'convex/values'
 
 import { requireUserId } from './lib/auth'
-import { callOpenRouterChat, safeJsonParse } from './lib/openrouter'
-import { DEFAULT_OPENROUTER_MODEL } from './lib/openrouterModels'
-
-const DEFAULT_MODEL = DEFAULT_OPENROUTER_MODEL
+import { callChatModel, extractJsonCandidate, safeJsonParse } from './lib/llm'
+import { DEFAULT_MODEL } from './lib/models'
 const MIN_COMMENTS = 12
 const OUTPUT_TOKENS: number | null = null
 const REPAIR_TOKENS = 1200
@@ -22,11 +20,6 @@ export const roastResume = action({
   },
   handler: async (ctx, args) => {
     await requireUserId(ctx)
-
-    const openRouterKey = process.env.OPENROUTER_API_KEY
-    if (!openRouterKey) {
-      throw new Error('Missing OPENROUTER_API_KEY server env var.')
-    }
 
     const resumeText = args.resumeText.trim()
     if (!resumeText) {
@@ -86,13 +79,6 @@ export const roastResume = action({
       jobDescription || 'N/A',
     ].join('\n')
 
-    function extractJsonCandidate(text: string) {
-      const start = text.indexOf('{')
-      const end = text.lastIndexOf('}')
-      if (start === -1 || end === -1 || end <= start) return text
-      return text.slice(start, end + 1)
-    }
-
     function fallbackResult(): RoastResult {
       return {
         summary: 'Roast response could not be parsed. Try again for full feedback.',
@@ -120,8 +106,7 @@ export const roastResume = action({
           'Ensure arrays/objects are properly closed and commas are correct.',
           'Preserve the original structure and values as much as possible.',
         ].join('\n')
-        const repaired = await callOpenRouterChat({
-          apiKey: openRouterKey!,
+        const repaired = await callChatModel({
           model: DEFAULT_MODEL,
           messages: [
             { role: 'system', content: 'You fix invalid JSON.' },
@@ -133,8 +118,7 @@ export const roastResume = action({
         try {
           return safeJsonParse(repaired) as RoastResult
         } catch {
-          const secondRepair = await callOpenRouterChat({
-            apiKey: openRouterKey!,
+          const secondRepair = await callChatModel({
             model: DEFAULT_MODEL,
             messages: [
               { role: 'system', content: 'You fix invalid JSON.' },
@@ -162,8 +146,7 @@ export const roastResume = action({
 
     async function generateRoast(systemContent: string, userContent: string) {
       try {
-        const raw = await callOpenRouterChat({
-          apiKey: openRouterKey!,
+        const raw = await callChatModel({
           model: DEFAULT_MODEL,
           messages: [
             { role: 'system', content: systemContent },

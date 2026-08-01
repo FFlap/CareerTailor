@@ -1,74 +1,4 @@
-export type OpenRouterChatMessage = {
-  role: 'system' | 'user' | 'assistant'
-  content:
-    | string
-    | Array<
-        | { type: 'text'; text: string }
-        | { type: 'image_url'; image_url: { url: string } }
-      >
-}
-
-function stripJsonFences(text: string) {
-  return text
-    .trim()
-    .replace(/^```(?:json)?/i, '')
-    .replace(/```$/i, '')
-    .trim()
-}
-
-function normalizeJsonCandidate(text: string) {
-  const stripped = stripJsonFences(text)
-  const start = stripped.indexOf('{')
-  const end = stripped.lastIndexOf('}')
-  const candidate = start >= 0 && end > start ? stripped.slice(start, end + 1) : stripped
-  return repairJsonSyntax(candidate)
-}
-
-function repairJsonSyntax(text: string) {
-  let normalized = text
-    .replace(/[“”]/g, '"')
-    .replace(/[‘’]/g, "'")
-
-  let out = ''
-  let inString = false
-  let escaped = false
-  for (let i = 0; i < normalized.length; i += 1) {
-    const ch = normalized[i]
-    if (escaped) {
-      out += ch
-      escaped = false
-      continue
-    }
-    if (ch === '\\') {
-      out += ch
-      escaped = true
-      continue
-    }
-    if (ch === '"') {
-      inString = !inString
-      out += ch
-      continue
-    }
-    if (inString && (ch === '\n' || ch === '\r')) {
-      out += '\\n'
-      continue
-    }
-    out += ch
-  }
-
-  normalized = out.replace(/,\s*([}\]])/g, '$1')
-  return normalized
-}
-
-export function safeJsonParse(text: string): unknown {
-  const normalized = normalizeJsonCandidate(text)
-  try {
-    return JSON.parse(normalized)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    throw new Error(`Model response was not valid JSON. ${message}`)
-  }
-}
+import { ChatRequest, isRetriableStatus, sleep } from './chat'
 
 export async function callOpenRouterChat({
   apiKey,
@@ -76,13 +6,7 @@ export async function callOpenRouterChat({
   messages,
   temperature = 0.3,
   maxTokens,
-}: {
-  apiKey: string
-  model: string
-  messages: OpenRouterChatMessage[]
-  temperature?: number
-  maxTokens?: number | null
-}) {
+}: ChatRequest) {
   const url = 'https://openrouter.ai/api/v1/chat/completions'
   const headers = {
     Authorization: `Bearer ${apiKey}`,
@@ -99,15 +23,7 @@ export async function callOpenRouterChat({
     baseBody.max_tokens = maxTokens
   }
 
-  function isRetriableStatus(status: number) {
-    return status === 429 || status === 500 || status === 502 || status === 503 || status === 504
-  }
-
-  function sleep(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms))
-  }
-
-  async function attempt(body: Record<string, unknown>, attemptIndex: number) {
+  async function attempt(body: Record<string, unknown>, attemptIndex: number): Promise<string> {
     const response = await fetch(url, {
       method: 'POST',
       headers,

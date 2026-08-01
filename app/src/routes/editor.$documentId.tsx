@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/lib/convex'
-import { DEFAULT_OPENROUTER_MODEL } from '@/lib/openrouterModels'
+import { DEFAULT_MODEL } from '@/lib/models'
 import { extractTextFromPdfBytes } from '@/lib/extractText'
 import { stripTypst } from '@/lib/typst/stripTypst'
 import { cn } from '@/lib/utils'
@@ -233,7 +233,7 @@ function EditorContent() {
   const autoApplyTimeout = useRef<number | null>(null)
   const structuredJsonRef = useRef<string>('')
   const lastDocIdRef = useRef<string | null>(null)
-  const defaultModel = DEFAULT_OPENROUTER_MODEL
+  const defaultModel = DEFAULT_MODEL
 
   useEffect(() => {
     if (!doc || hasInitialized.current) return

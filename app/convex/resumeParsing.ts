@@ -1,19 +1,16 @@
 import { action } from './_generated/server'
 import { v } from 'convex/values'
 import { requireUserId } from './lib/auth'
-import { callOpenRouterChat, safeJsonParse } from './lib/openrouter'
-import { openRouterModelIdValidator } from './lib/openrouterModels'
+import { callChatModel, safeJsonParse } from './lib/llm'
+import { DEFAULT_MODEL, modelIdValidator } from './lib/models'
 
 export const parseResumeText = action({
   args: {
     resumeText: v.string(),
-    model: openRouterModelIdValidator,
+    model: v.optional(modelIdValidator),
   },
   handler: async (ctx, args) => {
     await requireUserId(ctx)
-
-    const openRouterKey = process.env.OPENROUTER_API_KEY
-    if (!openRouterKey) throw new Error('Missing OPENROUTER_API_KEY')
 
     const prompt = `You are an expert resume parser.
 Extract structured data from this resume text and return ONLY valid JSON.
@@ -39,9 +36,8 @@ Important parsing rules:
 Resume text:
 ${args.resumeText}`
 
-    const raw = await callOpenRouterChat({
-      apiKey: openRouterKey,
-      model: args.model,
+    const raw = await callChatModel({
+      model: args.model ?? DEFAULT_MODEL,
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.2,
       maxTokens: 4096,
@@ -54,13 +50,10 @@ ${args.resumeText}`
 export const parseCoverLetterText = action({
   args: {
     coverLetterText: v.string(),
-    model: openRouterModelIdValidator,
+    model: v.optional(modelIdValidator),
   },
   handler: async (ctx, args) => {
     await requireUserId(ctx)
-
-    const openRouterKey = process.env.OPENROUTER_API_KEY
-    if (!openRouterKey) throw new Error('Missing OPENROUTER_API_KEY')
 
     const prompt = `You are an expert cover letter parser.
 Extract structured data from this cover letter text and return ONLY valid JSON.
@@ -82,9 +75,8 @@ Important parsing rules:
 Cover letter text:
 ${args.coverLetterText}`
 
-    const raw = await callOpenRouterChat({
-      apiKey: openRouterKey,
-      model: args.model,
+    const raw = await callChatModel({
+      model: args.model ?? DEFAULT_MODEL,
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.2,
       maxTokens: 2048,
