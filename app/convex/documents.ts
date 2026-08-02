@@ -1,122 +1,133 @@
-import { mutation, query } from './_generated/server'
-import { v } from 'convex/values'
-import type { Id } from './_generated/dataModel'
+import { mutation, query } from "./_generated/server";
+import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 
-import { requireUserId } from './lib/auth'
+import { requireUserId } from "./lib/auth";
 import {
   buildCoverLetterTypstSource,
   buildCustomCoverLetterTypstSource,
   buildCustomResumeTypstSource,
   buildResumeTypstSource,
-} from './lib/templates'
+} from "./lib/templates";
 
-const MAX_TYPST_SOURCE_LENGTH = 400_000
+const MAX_TYPST_SOURCE_LENGTH = 400_000;
 
 export const getMyDocument = query({
-  args: { documentId: v.id('documents') },
+  args: { documentId: v.id("documents") },
   handler: async (ctx, args) => {
-    const userId = await requireUserId(ctx)
-    const doc = await ctx.db.get(args.documentId)
+    const userId = await requireUserId(ctx);
+    const doc = await ctx.db.get(args.documentId);
     if (!doc || doc.userId !== userId) {
-      return null
+      return null;
     }
-    return doc
+    return doc;
   },
-})
+});
 
 export const listMyRecentResumes = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    const userId = await requireUserId(ctx)
-    const limit = args.limit ?? 3
+    const userId = await requireUserId(ctx);
+    const limit = args.limit ?? 3;
     const docs = await ctx.db
-      .query('documents')
-      .withIndex('by_user_type_createdAt', (q) =>
-        q.eq('userId', userId).eq('type', 'resume'),
+      .query("documents")
+      .withIndex("by_user_type_createdAt", (q) =>
+        q.eq("userId", userId).eq("type", "resume"),
       )
-      .order('desc')
-      .take(limit)
-    return docs
+      .order("desc")
+      .take(limit);
+    return docs;
   },
-})
+});
 
 export const listMyRecentDocuments = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    const userId = await requireUserId(ctx)
-    const limit = args.limit ?? 6
+    const userId = await requireUserId(ctx);
+    const limit = args.limit ?? 6;
     const docs = await ctx.db
-      .query('documents')
-      .withIndex('by_user_createdAt', (q) => q.eq('userId', userId))
-      .order('desc')
-      .take(limit)
+      .query("documents")
+      .withIndex("by_user_createdAt", (q) => q.eq("userId", userId))
+      .order("desc")
+      .take(limit);
 
-    const jobs = await Promise.all(docs.map((doc) => ctx.db.get(doc.jobId)))
+    const jobs = await Promise.all(docs.map((doc) => ctx.db.get(doc.jobId)));
     return docs.map((doc, idx) => {
-      const job = jobs[idx]
+      const job = jobs[idx];
       return {
         ...doc,
         job: job && job.userId === userId ? job : null,
-      }
-    })
+      };
+    });
   },
-})
+});
 
 export const updateMyTypstSource = mutation({
-  args: { documentId: v.id('documents'), typstSource: v.string() },
+  args: { documentId: v.id("documents"), typstSource: v.string() },
   handler: async (ctx, args) => {
-    const userId = await requireUserId(ctx)
+    const userId = await requireUserId(ctx);
     if (args.typstSource.length > MAX_TYPST_SOURCE_LENGTH) {
-      throw new Error('Typst source too large.')
+      throw new Error("Typst source too large.");
     }
-    const doc = await ctx.db.get(args.documentId)
+    const doc = await ctx.db.get(args.documentId);
     if (!doc || doc.userId !== userId) {
-      throw new Error('Not found.')
+      throw new Error("Not found.");
     }
-    const now = Date.now()
-    await ctx.db.patch(args.documentId, { typstSource: args.typstSource, updatedAt: now })
-    return { ok: true }
+    const now = Date.now();
+    const sourceEditedAt =
+      args.typstSource === doc.typstSource ? doc.sourceEditedAt : now;
+    await ctx.db.patch(args.documentId, {
+      typstSource: args.typstSource,
+      sourceEditedAt,
+      updatedAt: now,
+    });
+    return { ok: true, sourceEditedAt };
   },
-})
+});
 
 export const updateMyDocumentData = mutation({
   args: {
-    documentId: v.id('documents'),
+    documentId: v.id("documents"),
     data: v.any(),
   },
   handler: async (ctx, args) => {
-    const userId = await requireUserId(ctx)
-    const doc = await ctx.db.get(args.documentId)
+    const userId = await requireUserId(ctx);
+    const doc = await ctx.db.get(args.documentId);
     if (!doc || doc.userId !== userId) {
-      throw new Error('Not found.')
+      throw new Error("Not found.");
     }
 
     const profileDoc = await ctx.db
-      .query('profiles')
-      .withIndex('by_user', (q) => q.eq('userId', userId))
-      .unique()
-    const profile = profileDoc?.profile ?? {}
+      .query("profiles")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .unique();
+    const profile = profileDoc?.profile ?? {};
 
-    const rawTemplateId = doc.templateId || (doc.type === 'resume' ? 'basic_resume' : 'modern_cv_cover')
-    const isCustom = rawTemplateId.startsWith('custom:')
-    let templateSource: string | null = null
-    let resolvedTemplateId = rawTemplateId
+    const rawTemplateId =
+      doc.templateId ||
+      (doc.type === "resume" ? "basic_resume" : "modern_cv_cover");
+    const isCustom = rawTemplateId.startsWith("custom:");
+    let templateSource: string | null = null;
+    let resolvedTemplateId = rawTemplateId;
 
     if (isCustom) {
-      const customId = rawTemplateId.slice('custom:'.length) as Id<'customTemplates'>
-      const customTemplate = await ctx.db.get(customId)
+      const customId = rawTemplateId.slice(
+        "custom:".length,
+      ) as Id<"customTemplates">;
+      const customTemplate = await ctx.db.get(customId);
       if (!customTemplate || customTemplate.userId !== userId) {
-        throw new Error('Custom template not found.')
+        throw new Error("Custom template not found.");
       }
-      templateSource = customTemplate.source
+      templateSource = customTemplate.source;
     }
 
-    const job = doc.type === 'cover_letter' ? await ctx.db.get(doc.jobId) : null
-    const safeJob = job && job.userId === userId ? job : null
+    const job =
+      doc.type === "cover_letter" ? await ctx.db.get(doc.jobId) : null;
+    const safeJob = job && job.userId === userId ? job : null;
 
-    let typstSource = doc.typstSource
-    if (doc.type === 'resume') {
-      const resume = args.data
+    let typstSource = doc.typstSource;
+    if (doc.type === "resume") {
+      const resume = args.data;
       typstSource = templateSource
         ? buildCustomResumeTypstSource({
             templateSource,
@@ -127,9 +138,9 @@ export const updateMyDocumentData = mutation({
             templateId: resolvedTemplateId as any,
             resume,
             profile,
-          })
+          });
     } else {
-      const coverLetter = args.data
+      const coverLetter = args.data;
       typstSource = templateSource
         ? buildCustomCoverLetterTypstSource({
             templateSource,
@@ -142,27 +153,28 @@ export const updateMyDocumentData = mutation({
             coverLetter,
             profile,
             job: safeJob,
-          })
+          });
     }
 
     if (typstSource.length > MAX_TYPST_SOURCE_LENGTH) {
-      throw new Error('Typst source too large.')
+      throw new Error("Typst source too large.");
     }
 
-    const now = Date.now()
+    const now = Date.now();
     await ctx.db.patch(args.documentId, {
       data: args.data,
       typstSource,
+      sourceEditedAt: undefined,
       updatedAt: now,
-    })
-    return { typstSource }
+    });
+    return { typstSource };
   },
-})
+});
 
 export const createGeneratedDocument = mutation({
   args: {
-    jobId: v.id('jobs'),
-    type: v.union(v.literal('resume'), v.literal('cover_letter')),
+    jobId: v.id("jobs"),
+    type: v.union(v.literal("resume"), v.literal("cover_letter")),
     templateId: v.string(),
     llmModel: v.string(),
     tone: v.string(),
@@ -171,16 +183,16 @@ export const createGeneratedDocument = mutation({
     typstSource: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await requireUserId(ctx)
+    const userId = await requireUserId(ctx);
     if (args.typstSource.length > MAX_TYPST_SOURCE_LENGTH) {
-      throw new Error('Typst source too large.')
+      throw new Error("Typst source too large.");
     }
-    const job = await ctx.db.get(args.jobId)
+    const job = await ctx.db.get(args.jobId);
     if (!job || job.userId !== userId) {
-      throw new Error('Job not found.')
+      throw new Error("Job not found.");
     }
-    const now = Date.now()
-    return await ctx.db.insert('documents', {
+    const now = Date.now();
+    return await ctx.db.insert("documents", {
       userId,
       jobId: args.jobId,
       type: args.type,
@@ -192,6 +204,6 @@ export const createGeneratedDocument = mutation({
       typstSource: args.typstSource,
       createdAt: now,
       updatedAt: now,
-    })
+    });
   },
-})
+});

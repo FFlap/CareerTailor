@@ -18,6 +18,7 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as JobApplicationsRouteImport } from './routes/job-applications'
 import { Route as GenerateRouteImport } from './routes/generate'
 import { Route as GalleryRouteImport } from './routes/gallery'
+import { Route as EditorPreviewRouteImport } from './routes/editor-preview'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ExtensionConnectRouteImport } from './routes/extension.connect'
@@ -69,6 +70,11 @@ const GalleryRoute = GalleryRouteImport.update({
   path: '/gallery',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EditorPreviewRoute = EditorPreviewRouteImport.update({
+  id: '/editor-preview',
+  path: '/editor-preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -98,6 +104,7 @@ const ApiRenderTypstRoute = ApiRenderTypstRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/editor-preview': typeof EditorPreviewRoute
   '/gallery': typeof GalleryRoute
   '/generate': typeof GenerateRoute
   '/job-applications': typeof JobApplicationsRoute
@@ -114,6 +121,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/editor-preview': typeof EditorPreviewRoute
   '/gallery': typeof GalleryRoute
   '/generate': typeof GenerateRoute
   '/job-applications': typeof JobApplicationsRoute
@@ -131,6 +139,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/editor-preview': typeof EditorPreviewRoute
   '/gallery': typeof GalleryRoute
   '/generate': typeof GenerateRoute
   '/job-applications': typeof JobApplicationsRoute
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/dashboard'
+    | '/editor-preview'
     | '/gallery'
     | '/generate'
     | '/job-applications'
@@ -165,6 +175,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/dashboard'
+    | '/editor-preview'
     | '/gallery'
     | '/generate'
     | '/job-applications'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/dashboard'
+    | '/editor-preview'
     | '/gallery'
     | '/generate'
     | '/job-applications'
@@ -198,6 +210,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
+  EditorPreviewRoute: typeof EditorPreviewRoute
   GalleryRoute: typeof GalleryRoute
   GenerateRoute: typeof GenerateRoute
   JobApplicationsRoute: typeof JobApplicationsRoute
@@ -277,6 +290,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GalleryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/editor-preview': {
+      id: '/editor-preview'
+      path: '/editor-preview'
+      fullPath: '/editor-preview'
+      preLoaderRoute: typeof EditorPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -318,6 +338,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
+  EditorPreviewRoute: EditorPreviewRoute,
   GalleryRoute: GalleryRoute,
   GenerateRoute: GenerateRoute,
   JobApplicationsRoute: JobApplicationsRoute,

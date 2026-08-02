@@ -1,8 +1,8 @@
-import { action } from './_generated/server'
-import { v } from 'convex/values'
-import { requireUserId } from './lib/auth'
-import { callChatModel, safeJsonParse } from './lib/llm'
-import { DEFAULT_MODEL, modelIdValidator } from './lib/models'
+import { action } from "./_generated/server";
+import { v } from "convex/values";
+import { requireUserId } from "./lib/auth";
+import { callChatModel, safeJsonParse } from "./lib/llm";
+import { DEFAULT_MODEL, modelIdValidator } from "./lib/models";
 
 export const parseResumeText = action({
   args: {
@@ -10,7 +10,7 @@ export const parseResumeText = action({
     model: v.optional(modelIdValidator),
   },
   handler: async (ctx, args) => {
-    await requireUserId(ctx)
+    await requireUserId(ctx);
 
     const prompt = `You are an expert resume parser.
 Extract structured data from this resume text and return ONLY valid JSON.
@@ -34,54 +34,15 @@ Important parsing rules:
 - All string fields should be strings even if empty
 
 Resume text:
-${args.resumeText}`
+${args.resumeText}`;
 
     const raw = await callChatModel({
       model: args.model ?? DEFAULT_MODEL,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: "user", content: prompt }],
       temperature: 0.2,
       maxTokens: 4096,
-    })
+    });
 
-    return safeJsonParse(raw)
+    return safeJsonParse(raw);
   },
-})
-
-export const parseCoverLetterText = action({
-  args: {
-    coverLetterText: v.string(),
-    model: v.optional(modelIdValidator),
-  },
-  handler: async (ctx, args) => {
-    await requireUserId(ctx)
-
-    const prompt = `You are an expert cover letter parser.
-Extract structured data from this cover letter text and return ONLY valid JSON.
-
-Output schema: {
-  cover_letter: {
-    greeting: string,
-    body_paragraphs: [string],
-    closing: string,
-    signature_name: string
-  }
-}
-
-Important parsing rules:
-- Keep paragraph order intact
-- Use an array for body_paragraphs even if only one paragraph
-- All string fields should be strings even if empty
-
-Cover letter text:
-${args.coverLetterText}`
-
-    const raw = await callChatModel({
-      model: args.model ?? DEFAULT_MODEL,
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.2,
-      maxTokens: 2048,
-    })
-
-    return safeJsonParse(raw)
-  },
-})
+});

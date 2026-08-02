@@ -1,5 +1,5 @@
-import { defineSchema, defineTable } from 'convex/server'
-import { v } from 'convex/values'
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
 
 export default defineSchema({
   profiles: defineTable({
@@ -55,7 +55,7 @@ export default defineSchema({
       ),
     }),
     updatedAt: v.number(),
-  }).index('by_user', ['userId']),
+  }).index("by_user", ["userId"]),
 
   jobs: defineTable({
     userId: v.string(),
@@ -66,36 +66,37 @@ export default defineSchema({
     company: v.string(),
     description: v.string(),
     status: v.union(
-      v.literal('viewed'),
-      v.literal('applied'),
-      v.literal('interview'),
-      v.literal('accepted'),
-      v.literal('ghosted'),
+      v.literal("viewed"),
+      v.literal("applied"),
+      v.literal("interview"),
+      v.literal("accepted"),
+      v.literal("ghosted"),
     ),
     addedAt: v.optional(v.number()),
     lastSeenAt: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index('by_user_updatedAt', ['userId', 'updatedAt'])
-    .index('by_user_url', ['userId', 'url']),
+    .index("by_user_updatedAt", ["userId", "updatedAt"])
+    .index("by_user_url", ["userId", "url"]),
 
   documents: defineTable({
     userId: v.string(),
-    jobId: v.id('jobs'),
-    type: v.union(v.literal('resume'), v.literal('cover_letter')),
+    jobId: v.id("jobs"),
+    type: v.union(v.literal("resume"), v.literal("cover_letter")),
     templateId: v.string(),
     llmModel: v.string(),
     tone: v.string(),
     targetLength: v.string(),
     data: v.any(),
     typstSource: v.string(),
+    sourceEditedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index('by_user_type_createdAt', ['userId', 'type', 'createdAt'])
-    .index('by_user_createdAt', ['userId', 'createdAt'])
-    .index('by_user_job_type', ['userId', 'jobId', 'type']),
+    .index("by_user_type_createdAt", ["userId", "type", "createdAt"])
+    .index("by_user_createdAt", ["userId", "createdAt"])
+    .index("by_user_job_type", ["userId", "jobId", "type"]),
 
   userSettings: defineTable({
     userId: v.string(),
@@ -103,17 +104,17 @@ export default defineSchema({
     defaultCoverTemplateId: v.string(),
     defaultModel: v.string(),
     updatedAt: v.number(),
-  }).index('by_user', ['userId']),
+  }).index("by_user", ["userId"]),
 
   customTemplates: defineTable({
     userId: v.string(),
     name: v.string(),
-    type: v.union(v.literal('resume'), v.literal('cover_letter')),
+    type: v.union(v.literal("resume"), v.literal("cover_letter")),
     source: v.string(),
-    origin: v.optional(v.union(v.literal('typst'), v.literal('image'))),
+    origin: v.optional(v.union(v.literal("typst"), v.literal("image"))),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index('by_user_updatedAt', ['userId', 'updatedAt'])
-    .index('by_user_type', ['userId', 'type']),
-})
+    .index("by_user_updatedAt", ["userId", "updatedAt"])
+    .index("by_user_type", ["userId", "type"]),
+});
