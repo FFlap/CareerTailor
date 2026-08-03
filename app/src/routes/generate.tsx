@@ -1,18 +1,22 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { Loader2 } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import {
   Authenticated,
   AuthLoading,
   Unauthenticated,
   useAction,
+  useConvex,
   useConvexAuth,
+  useMutation,
   useQuery,
 } from 'convex/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
+import type { Id } from '../../convex/_generated/dataModel'
 import SidebarLayout from '@/components/SidebarLayout'
+import { EmptyState, Page, PageHeader, Panel, PanelHeader } from '@/components/ui/page'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -25,10 +29,14 @@ import {
 } from '@/lib/customTemplates'
 import { renderTypstToCanvasInBrowser } from '@/lib/typst/renderClient'
 import {
-  DEFAULT_MODEL,
-  DEFAULT_MODEL_LABEL,
 } from '@/lib/models'
 import { useElapsedProgress } from '@/lib/useElapsedProgress'
+import {
+  countPdfPages,
+  describeCapacity,
+  estimateContent,
+  fitResumeToPages,
+} from '@/lib/fitToPages'
 import {
   COVER_TEMPLATES,
   RESUME_TEMPLATES,
@@ -244,11 +252,11 @@ function TemplatePickerModal({
             className="rounded-full p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
             aria-label="Close"
           >
-            <span className="material-icons-outlined text-lg">close</span>
+            <span aria-hidden>×</span>
           </button>
         </div>
 
-        <div className="grid gap-6 overflow-y-auto p-6 lg:grid-cols-[1fr_1.2fr]">
+        <div className="grid gap-4 overflow-y-auto p-5 lg:grid-cols-[1fr_1.2fr]">
           <div className="space-y-4">
             <p className="text-sm text-slate-500 dark:text-slate-400">
               Choose a template to preview before applying it.
@@ -339,20 +347,30 @@ function GeneratePage() {
   return (
     <>
       <AuthLoading>
-        <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-          <p className="text-sm text-slate-500 dark:text-slate-400">Loading...</p>
-        </div>
+        <SidebarLayout>
+          <Page>
+            <p className="text-sm text-slate-500">Loading…</p>
+          </Page>
+        </SidebarLayout>
       </AuthLoading>
 
       <Unauthenticated>
-        <main className="min-h-screen bg-slate-50 py-12 dark:bg-slate-900">
-          <div className="mx-auto max-w-md px-4 text-center">
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Sign in required</h1>
-            <p className="mt-2 text-slate-600 dark:text-slate-400">
-              You need to <Link to="/sign-in" className="font-medium text-primary hover:underline">sign in</Link> to generate documents.
-            </p>
-          </div>
-        </main>
+        <SidebarLayout>
+          <Page>
+            <EmptyState
+              title="Sign in to generate"
+              description="Documents are tied to your profile and your tracked jobs."
+              action={
+                <Link
+                  to="/sign-in"
+                  className="rounded-md bg-slate-900 px-3 py-2 text-[13px] font-medium text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900"
+                >
+                  Sign in
+                </Link>
+              }
+            />
+          </Page>
+        </SidebarLayout>
       </Unauthenticated>
 
       <Authenticated>
@@ -377,6 +395,8 @@ function GenerateContent() {
     canQueryTemplates ? {} : undefined,
   )
   const generate = useAction(api.generation.generateDocuments)
+  const updateDocumentData = useMutation(api.documents.updateMyDocumentData)
+  const convexClient = useConvex()
 
   const profile = (profileDoc as any)?.profile
 
@@ -509,20 +529,29 @@ function GenerateContent() {
         : COVER_TEMPLATES.find((t) => t.id === coverTemplateId)?.label ||
           'Select a cover letter'
 
-  async function onGenerate() {
-    if (!job.url.trim()) {
-      setStatus('Job URL is required.')
-      return
+  const contentEstimate = useMemo(() => estimateContent(profile), [profile])
+
+  // Two pages of paper needs two pages of material.
+  useEffect(() => {
+    if (targetLength === "2_pages" && !contentEstimate.canFillTwoPages) {
+      setTargetLength("1_page")
     }
+  }, [contentEstimate.canFillTwoPages, targetLength])
+
+  const hasJob = Boolean(
+    job.url.trim() || job.title.trim() || job.company.trim() || job.description.trim(),
+  )
+
+  async function onGenerate() {
     if (!profile?.personal?.fullName) {
-      setStatus('Complete onboarding first.')
+      setStatus("Complete your profile first.")
       return
     }
 
-    const hasResume = resumeTemplateId !== 'none'
-    const hasCover = coverTemplateId !== 'none'
+    const hasResume = resumeTemplateId !== "none"
+    const hasCover = coverTemplateId !== "none"
     if (!hasResume && !hasCover) {
-      setStatus('Pick a resume or cover letter template to generate.')
+      setStatus("Choose a résumé or a cover letter.")
       return
     }
 
@@ -535,98 +564,126 @@ function GenerateContent() {
       ? extractCustomTemplateId(coverTemplateId)
       : undefined
 
-    const documentType = hasResume && hasCover ? 'both' : hasResume ? 'resume' : 'cover_letter'
-    const resumeTemplateForRequest: ResumeTemplateId =
-      resumeIsCustom
-        ? ((settings?.defaultResumeTemplateId as ResumeTemplateId) || 'basic_resume')
-        : resumeTemplateId === 'none'
-        ? (settings?.defaultResumeTemplateId as ResumeTemplateId) || 'basic_resume'
+    const documentType = hasResume && hasCover ? "both" : hasResume ? "resume" : "cover_letter"
+    const resumeTemplateForRequest: ResumeTemplateId = resumeIsCustom
+      ? ((settings?.defaultResumeTemplateId as ResumeTemplateId) || "basic_resume")
+      : resumeTemplateId === "none"
+        ? (settings?.defaultResumeTemplateId as ResumeTemplateId) || "basic_resume"
         : resumeTemplateId
-    const coverTemplateForRequest: CoverTemplateId =
-      coverIsCustom
-        ? ((settings?.defaultCoverTemplateId as CoverTemplateId) || 'modern_cv_cover')
-        : coverTemplateId === 'none'
-        ? (settings?.defaultCoverTemplateId as CoverTemplateId) || 'modern_cv_cover'
+    const coverTemplateForRequest: CoverTemplateId = coverIsCustom
+      ? ((settings?.defaultCoverTemplateId as CoverTemplateId) || "modern_cv_cover")
+      : coverTemplateId === "none"
+        ? (settings?.defaultCoverTemplateId as CoverTemplateId) || "modern_cv_cover"
         : coverTemplateId
 
     setIsGenerating(true)
-    setStatus('')
+    setStatus("")
     try {
       const result = await generate({
-        job,
+        // No posting means nothing to tailor to, and no job to track.
+        job: hasJob ? job : undefined,
         documentType,
         resumeTemplateId: resumeTemplateForRequest,
         coverTemplateId: coverTemplateForRequest,
         customResumeTemplateId,
         customCoverTemplateId,
-        model: DEFAULT_MODEL,
         preferences: { tone, targetLength },
       })
+
       const nextId = result.resumeId || result.coverId
       if (!nextId) {
-        throw new Error('No document was generated.')
+        throw new Error("No document was generated.")
       }
-      setStatus('Done.')
-      navigate({
-        to: '/editor/$documentId',
-        params: { documentId: nextId },
-      })
+
+      if (result.resumeId) {
+        await enforceLength(result.resumeId as Id<"documents">)
+      }
+
+      navigate({ to: "/editor/$documentId", params: { documentId: nextId } })
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'Generation failed.')
+      setStatus(error instanceof Error ? error.message : "Generation failed.")
     } finally {
       setIsGenerating(false)
     }
   }
 
-  return (
+  /** Checks the promise against the printed page: compile, count, trim, repeat. */
+  async function enforceLength(documentId: Id<"documents">) {
+    const maxPages = targetLength === "2_pages" ? 2 : 1
+    try {
+      setStatus("Checking the page count…")
+      const doc = await convexClient.query(api.documents.getMyDocument, {
+        documentId,
+      })
+      if (!doc || doc.type !== "resume") return
 
-    <div className="space-y-8">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Generate Documents</h1>
-        <p className="text-lg text-slate-600 dark:text-slate-400">
-          Create tailored resumes and cover letters for your job applications.
-        </p>
-      </div>
+      const { renderTypstToPdfBytesInBrowser } = await import("@/lib/typst/renderClient")
+      const { buildResumeTypstSource } = await import("../../convex/lib/templates")
+
+      const isCustomTemplate = String(doc.templateId).startsWith("custom:")
+      if (isCustomTemplate) return
+
+      const result = await fitResumeToPages({
+        data: doc.data,
+        maxPages,
+        measure: async (data) =>
+          countPdfPages(
+            await renderTypstToPdfBytesInBrowser({
+              source: buildResumeTypstSource({
+                templateId: doc.templateId as ResumeTemplateId,
+                resume: data,
+                profile,
+              }),
+              documentType: "resume",
+              templateId: doc.templateId,
+            }),
+          ),
+      })
+
+      if (result.trims > 0 && !result.overflows) {
+        await updateDocumentData({ documentId, data: result.data })
+      }
+    } catch {
+      // Never block the finished document; the editor shows the real count.
+    }
+  }
+
+  return (
+    <Page>
+      <PageHeader
+        title="Generate"
+        description="Paste a posting, choose the templates, and get a tailored résumé and cover letter."
+      />
 
       {profileDoc === undefined ? (
         <div className="flex justify-center py-12">
            <p className="text-sm text-slate-500 dark:text-slate-400">Loading profile...</p>
         </div>
       ) : !profile?.personal?.fullName ? (
-        <Card className="border border-slate-200 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <CardHeader className="border-b border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-800/50">
-            <div className="flex items-center gap-3">
-               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100 text-red-600 dark:bg-red-900/30">
-                 <span className="material-icons-outlined text-lg">error</span>
-               </div>
-               <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">Complete Onboarding</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6">
+        <Panel>
+          <PanelHeader title="Finish your profile first" />
+          <div className="p-4">
             <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
-              You need to complete your profile before you can generate documents.
+              Every document is written from your profile, so there is nothing to
+              generate from until it has your name and history in it.
             </p>
             <Button asChild>
-              <Link to="/onboarding">Go to Onboarding</Link>
+              <Link to="/profile">Go to your profile</Link>
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </Panel>
       ) : (
-        <div className="grid gap-8 lg:grid-cols-2 text-left">
-          {/* Left Column: Job Details */}
-          <div className="space-y-6">
-             <Card className="border border-slate-200 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <CardHeader className="border-b border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-800/50">
-                 <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900/30">
-                    <span className="material-icons-outlined text-lg">work</span>
-                  </div>
-                  <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">Job Details</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6 p-6">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="space-y-4">
+             <Panel>
+              <PanelHeader title="The posting" meta="Optional" />
+              <div className="space-y-4 p-4">
+                <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                  Paste a posting to tailor the wording and ordering towards it.
+                  Leave it empty for a general document drawn from your profile.
+                </p>
                 <div className="space-y-2">
-                  <Label htmlFor="jobTitle" className="text-xs font-semibold uppercase tracking-wider text-slate-500">Job Title</Label>
+                  <Label htmlFor="jobTitle" className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Job Title</Label>
                   <Input
                     id="jobTitle"
                     value={job.title}
@@ -636,7 +693,7 @@ function GenerateContent() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="jobCompany" className="text-xs font-semibold uppercase tracking-wider text-slate-500">Company</Label>
+                  <Label htmlFor="jobCompany" className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Company</Label>
                   <Input
                     id="jobCompany"
                     value={job.company}
@@ -646,7 +703,7 @@ function GenerateContent() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="jobUrl" className="text-xs font-semibold uppercase tracking-wider text-slate-500">Job URL</Label>
+                  <Label htmlFor="jobUrl" className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Job URL</Label>
                   <Input
                     id="jobUrl"
                     value={job.url}
@@ -656,42 +713,32 @@ function GenerateContent() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="jobDescription" className="text-xs font-semibold uppercase tracking-wider text-slate-500">Job Description</Label>
+                  <Label htmlFor="jobDescription" className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Job Description</Label>
                   <Textarea
                     id="jobDescription"
                     value={job.description}
                     onChange={(e) => setJob((j) => ({ ...j, description: e.target.value }))}
-                    className="min-h-[200px] bg-white dark:bg-slate-950"
-                    placeholder="Paste the job description here..."
+                    className="min-h-[180px] bg-white dark:bg-slate-950"
+                    placeholder="Paste the description — this is what the tailoring reads."
                   />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </Panel>
           </div>
 
-          {/* Right Column: Configuration */}
-          <div className="space-y-6">
-            <Card className="border border-slate-200 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <CardHeader className="border-b border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-800/50">
-                 <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30">
-                    <span className="material-icons-outlined text-lg">description</span>
-                  </div>
-                  <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">Templates</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6 p-6">
+          <div className="space-y-4">
+            <Panel>
+              <PanelHeader title="Templates" />
+              <div className="space-y-4 p-4">
                 <div className="space-y-2">
-                  <Label htmlFor="resumeTemplate" className="text-xs font-semibold uppercase tracking-wider text-slate-500">Resume Template</Label>
-                  <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 text-sm dark:border-slate-800 dark:bg-slate-950">
+                  <Label htmlFor="resumeTemplate" className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Resume Template</Label>
+                  <div className="flex flex-col gap-3 rounded-md border border-slate-200 bg-white p-3 text-sm dark:border-slate-800 dark:bg-slate-950">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-semibold text-slate-900 dark:text-white">{resumeLabel}</p>
-                        <p className="text-xs text-slate-500">Click to preview and pick a resume template.</p>
+                        <p className="text-[13px] font-medium text-slate-900 dark:text-slate-100">{resumeLabel}</p>
+                        <p className="mt-0.5 text-xs text-slate-500">Preview before you choose.</p>
                       </div>
-                      <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-200">
-                        Resume
-                      </span>
+                      
                     </div>
                     <div className="flex items-center gap-2">
                       <Button type="button" variant="outline" onClick={() => setResumePickerOpen(true)}>
@@ -707,16 +754,14 @@ function GenerateContent() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="coverTemplate" className="text-xs font-semibold uppercase tracking-wider text-slate-500">Cover Letter Template</Label>
-                  <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 text-sm dark:border-slate-800 dark:bg-slate-950">
+                  <Label htmlFor="coverTemplate" className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Cover Letter Template</Label>
+                  <div className="flex flex-col gap-3 rounded-md border border-slate-200 bg-white p-3 text-sm dark:border-slate-800 dark:bg-slate-950">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-semibold text-slate-900 dark:text-white">{coverLabel}</p>
-                        <p className="text-xs text-slate-500">Click to preview and pick a cover letter.</p>
+                        <p className="text-[13px] font-medium text-slate-900 dark:text-slate-100">{coverLabel}</p>
+                        <p className="mt-0.5 text-xs text-slate-500">Preview before you choose.</p>
                       </div>
-                      <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-200">
-                        Cover Letter
-                      </span>
+                      
                     </div>
                     <div className="flex items-center gap-2">
                       <Button type="button" variant="outline" onClick={() => setCoverPickerOpen(true)}>
@@ -730,32 +775,18 @@ function GenerateContent() {
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </Panel>
 
-            <Card className="border border-slate-200 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <CardHeader className="border-b border-slate-100 bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-800/50">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 text-purple-600 dark:bg-purple-900/30">
-                    <span className="material-icons-outlined text-lg">tune</span>
-                  </div>
-                  <CardTitle className="text-base font-semibold text-slate-900 dark:text-white">Settings</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6 p-6">
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-slate-500">AI Model</Label>
-                  <p className="flex h-10 w-full items-center rounded-md border border-input bg-white px-3 py-2 text-sm text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-                    {DEFAULT_MODEL_LABEL}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+            <Panel>
+              <PanelHeader title="Voice and length" />
+              <div className="space-y-4 p-4">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="tone" className="text-xs font-semibold uppercase tracking-wider text-slate-500">Tone</Label>
+                    <Label htmlFor="tone" className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Tone</Label>
                     <select
                       id="tone"
-                      className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-950"
+                      className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-[13px] outline-none focus-visible:border-slate-400 dark:border-slate-800 dark:bg-slate-950"
                       value={tone}
                       onChange={(e) => setTone(e.target.value)}
                     >
@@ -765,21 +796,43 @@ function GenerateContent() {
                       <option value="warm">Warm</option>
                     </select>
                   </div>
-                   <div className="space-y-2">
-                    <Label htmlFor="targetLength" className="text-xs font-semibold uppercase tracking-wider text-slate-500">Length</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="targetLength" className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Length</Label>
                     <select
                       id="targetLength"
-                      className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-950"
+                      className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-[13px] outline-none focus-visible:border-slate-400 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950"
                       value={targetLength}
                       onChange={(e) => setTargetLength(e.target.value)}
                     >
-                      <option value="1_page">1 Page</option>
-                      <option value="2_pages">2 Pages</option>
+                      <option value="1_page">One page</option>
+                      <option value="2_pages" disabled={!contentEstimate.canFillTwoPages}>
+                        Two pages
+                      </option>
                     </select>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+
+                {!contentEstimate.canFillTwoPages && (
+                  <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                    Two pages is not possible yet — your profile holds{" "}
+                    {describeCapacity(contentEstimate)}, which is about one page of
+                    material.{" "}
+                    <Link
+                      to="/profile"
+                      className="text-slate-900 underline decoration-slate-300 underline-offset-4 hover:decoration-slate-900 dark:text-slate-100 dark:decoration-slate-600"
+                    >
+                      Add more to your profile
+                    </Link>{" "}
+                    to unlock it.
+                  </p>
+                )}
+
+                <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                  The résumé is compiled and counted after it is written, then
+                  trimmed if it runs over.
+                </p>
+              </div>
+            </Panel>
           </div>
         </div>
       )}
@@ -812,46 +865,50 @@ function GenerateContent() {
         noneLabel="No cover letter"
       />
 
-      {/* Action Bar */}
       {profile?.personal?.fullName && (
-        <div className="sticky bottom-4 z-10 rounded-xl border border-slate-200 bg-white/80 p-4 shadow-lg backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/80">
-          <div className="flex items-center justify-between">
-              <div className="text-sm text-slate-500 dark:text-slate-400" aria-live="polite">
-                {isGenerating ? (
-                  <span className="flex items-center gap-2 font-medium text-slate-700 dark:text-slate-300">
-                    <span className="material-icons-outlined animate-spin text-base">sync</span>
-                    {progress.label}
-                    <span className="tabular-nums text-slate-400">{progress.elapsedLabel}</span>
-                  </span>
-                ) : status ? (
-                  <span className={`font-medium ${
-                    status.includes('failed') || status.includes('required') ? 'text-red-500' : 'text-slate-700 dark:text-slate-300'
-                  }`}>
-                    {status}
-                  </span>
-                ) : null}
-              </div>
-              <Button
-              size="lg"
-              onClick={onGenerate}
-              disabled={isGenerating || (resumeTemplateId === 'none' && coverTemplateId === 'none')}
-              className="min-w-[140px] shadow-md shadow-primary/20"
-            >
-              {isGenerating ? (
-                <>
-                  <span className="animate-spin material-icons-outlined mr-2 text-lg">sync</span>
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <span className="material-icons-outlined mr-2 text-lg">auto_awesome</span>
-                  Generate
-                </>
-              )}
-            </Button>
-          </div>
+        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
+          <span
+            className="mr-auto text-[13px] text-slate-500 dark:text-slate-400"
+            aria-live="polite"
+          >
+            {isGenerating ? (
+              <span className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                {progress.label}
+                <span className="tabular-nums text-slate-400">
+                  {progress.elapsedLabel}
+                </span>
+              </span>
+            ) : status ? (
+              <span
+                className={
+                  status.includes("failed") || status.includes("first")
+                    ? "text-rose-600 dark:text-rose-400"
+                    : undefined
+                }
+              >
+                {status}
+              </span>
+            ) : hasJob ? (
+              "Tailored to the posting above."
+            ) : (
+              "No posting — this will be a general document from your profile."
+            )}
+          </span>
+
+          <button
+            type="button"
+            onClick={onGenerate}
+            disabled={
+              isGenerating ||
+              (resumeTemplateId === "none" && coverTemplateId === "none")
+            }
+            className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-slate-700 disabled:opacity-40 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+          >
+            {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isGenerating ? "Generating…" : "Generate"}
+          </button>
         </div>
       )}
-    </div>
+    </Page>
   )
 }

@@ -5,9 +5,10 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        display: ['"Playfair Display"', "serif"],
-        sans: ['"Inter"', "sans-serif"],
-        mono: ['"JetBrains Mono"', "monospace"],
+        display: ['"Archivo"', "system-ui", "sans-serif"],
+        sans: ['"Public Sans"', "system-ui", "sans-serif"],
+        // Code only — never labels, meta, or numbers in the interface.
+        mono: ['"JetBrains Mono"', "ui-monospace", "monospace"],
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -29,7 +30,8 @@ module.exports = {
           foreground: "hsl(var(--popover-foreground))",
         },
         primary: {
-          DEFAULT: "#2563eb",
+          // Follows the token, which is ink — not a brand blue.
+          DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
         },
         secondary: {

@@ -8,7 +8,7 @@ export const Route = createFileRoute('/sign-in')({
 function SignInPage() {
   return (
     <main className="mx-auto grid min-h-[calc(100vh-3.5rem)] max-w-5xl place-items-center px-4 py-10">
-      <SignIn routing="hash" />
+      <SignIn routing="hash" forceRedirectUrl="/dashboard" signUpUrl="/sign-up" />
     </main>
   )
 }

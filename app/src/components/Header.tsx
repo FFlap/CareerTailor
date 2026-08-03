@@ -1,112 +1,96 @@
-import { Link, useRouterState } from '@tanstack/react-router'
-import { SignedIn, SignedOut, UserButton, useUser } from '@clerk/tanstack-react-start'
-import { useState, useEffect } from 'react'
+import {
+  SignedIn,
+  SignedOut,
+  UserButton,
+} from "@clerk/tanstack-react-start";
+import { Link } from "@tanstack/react-router";
+import { Moon, Sun } from "lucide-react";
+import { useEffect, useState } from "react";
+
+import { cn } from "@/lib/utils";
+
+const NAV = [
+  { to: "/dashboard", label: "Dashboard" },
+  { to: "/generate", label: "Generate" },
+  { to: "/job-applications", label: "Applications" },
+  { to: "/statistics", label: "Statistics" },
+  { to: "/templates", label: "Templates" },
+  { to: "/roast", label: "Roast" },
+] as const;
 
 export default function Header() {
-  const { user } = useUser()
-  const pathname = useRouterState({
-    select: (state) => state.location.pathname,
-  })
-  const [isDark, setIsDark] = useState(false)
-  const isWorkspaceRoute =
-    pathname.startsWith('/dashboard') ||
-    pathname.startsWith('/generate') ||
-    pathname.startsWith('/job-applications') ||
-    pathname.startsWith('/gallery') ||
-    pathname.startsWith('/roast') ||
-    pathname.startsWith('/templates') ||
-    pathname.startsWith('/onboarding')
+  const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    if (document.documentElement.classList.contains('dark')) {
-      setIsDark(true)
-    }
-  }, [])
+    setIsDark(document.documentElement.classList.contains("dark"));
+  }, []);
 
   const toggleDarkMode = () => {
-    const newIsDark = !isDark
-    setIsDark(newIsDark)
-    if (newIsDark) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-  }
+    const next = !isDark;
+    setIsDark(next);
+    document.documentElement.classList.toggle("dark", next);
+  };
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/80">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center gap-8">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <span className="material-icons-outlined text-xl text-white">description</span>
-              </div>
-              <span className="text-xl font-bold tracking-tight">
-                <span className="text-slate-900 dark:text-white">Career</span>
-                <span className="text-primary">Tailor</span>
-              </span>
-            </Link>
-            {isWorkspaceRoute ? null : (
-              <div className="hidden md:flex space-x-4">
-                <Link to="/dashboard" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-primary dark:text-slate-400 [&.active]:bg-primary/10 [&.active]:text-primary">Dashboard</Link>
-                <Link to="/generate" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-primary dark:text-slate-400 [&.active]:bg-primary/10 [&.active]:text-primary">Generate</Link>
-                <Link to="/templates" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-primary dark:text-slate-400 [&.active]:bg-primary/10 [&.active]:text-primary">Templates</Link>
-              </div>
-            )}
+    <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
+      <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-5 sm:px-8">
+        <Link
+          to="/"
+          className="shrink-0 font-display text-sm font-semibold tracking-tight text-slate-900 outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 dark:text-slate-50"
+        >
+          CareerTailor
+        </Link>
+
+        <SignedIn>
+          <div className="hidden items-center gap-0.5 md:flex">
+            {NAV.map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={cn(
+                  "rounded-md px-2.5 py-1.5 text-[13px] text-slate-500 outline-none transition-colors",
+                  "hover:bg-slate-100 hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-slate-900/15",
+                  "dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100",
+                  "[&.active]:font-medium [&.active]:text-slate-900 dark:[&.active]:text-slate-50",
+                )}
+              >
+                {item.label}
+              </Link>
+            ))}
           </div>
+        </SignedIn>
 
-          {isWorkspaceRoute ? null : (
-            <div className="hidden flex-1 mx-8 max-w-md lg:flex">
-              <div className="relative w-full">
-                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                  <span className="material-icons-outlined text-sm text-slate-400">search</span>
-                </span>
-                <input 
-                  type="text" 
-                  placeholder="Search documents, jobs, or templates..." 
-                  className="block w-full rounded-full border border-slate-200 bg-slate-50 py-2 pl-10 pr-3 leading-5 placeholder-slate-400 transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary sm:text-sm dark:border-slate-700 dark:bg-slate-800"
-                />
-              </div>
-            </div>
-          )}
+        <div className="ml-auto flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={toggleDarkMode}
+            aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
+            className="rounded-md p-2 text-slate-400 outline-none transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-slate-900/15 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+          >
+            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
 
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={toggleDarkMode}
-              className="rounded-full p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+          <SignedIn>
+            <UserButton
+              afterSignOutUrl="/"
+              appearance={{
+                elements: {
+                  userButtonAvatarBox: "h-7 w-7",
+                  userButtonTrigger: "h-7 w-7",
+                },
+              }}
+            />
+          </SignedIn>
+          <SignedOut>
+            <Link
+              to="/sign-in"
+              className="rounded-md bg-slate-900 px-3 py-1.5 text-[13px] font-medium text-white outline-none transition-colors hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-slate-900/25 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
             >
-              <span className="material-icons-outlined">{isDark ? 'light_mode' : 'dark_mode'}</span>
-            </button>
-            
-            <SignedIn>
-                <div className="flex items-center gap-3 border-l border-slate-200 pl-4 dark:border-slate-800">
-                    <div className="hidden text-right sm:block">
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white">{user?.fullName || 'User'}</p>
-                    <p className="text-xs text-slate-500">Premium Plan</p>
-                    </div>
-                    <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full ring-2 ring-primary/20">
-                        <UserButton 
-                            appearance={{
-                                elements: {
-                                    userButtonAvatarBox: "h-10 w-10",
-                                    userButtonTrigger: "h-10 w-10"
-                                }
-                            }}
-                        />
-                    </div>
-                </div>
-            </SignedIn>
-            <SignedOut>
-                 <div className="border-l border-slate-200 pl-4 dark:border-slate-800">
-                    <Link to="/sign-in" className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90">
-                        Sign In
-                    </Link>
-                 </div>
-            </SignedOut>
-          </div>
+              Sign in
+            </Link>
+          </SignedOut>
         </div>
       </div>
     </nav>
-  )
+  );
 }

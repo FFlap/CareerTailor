@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '@/lib/convex'
 import { cn } from '@/lib/utils'
 import SidebarLayout from '@/components/SidebarLayout'
+import { EmptyState, Page, PageHeader, Panel, PanelHeader } from '@/components/ui/page'
 import { extractTextFromPdf } from '@/lib/extractText'
 import type { Id } from '../../convex/_generated/dataModel'
 
@@ -53,20 +54,30 @@ function RoastPage() {
   return (
     <>
       <AuthLoading>
-        <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-          <p className="text-sm text-slate-500 dark:text-slate-400">Loading...</p>
-        </div>
+        <SidebarLayout>
+          <Page>
+            <p className="text-sm text-slate-500">Loading…</p>
+          </Page>
+        </SidebarLayout>
       </AuthLoading>
 
       <Unauthenticated>
-        <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-          <div className="text-center">
-            <h1 className="mb-4 text-2xl font-bold text-slate-900 dark:text-white">Access Denied</h1>
-            <p className="mb-6 text-slate-600 dark:text-slate-400">
-              You need to <Link to="/sign-in" className="text-primary hover:underline">sign in</Link> to view this page.
-            </p>
-          </div>
-        </div>
+        <SidebarLayout>
+          <Page>
+            <EmptyState
+              title="Sign in to roast a resume"
+              description="Uploads and feedback stay with your account."
+              action={
+                <Link
+                  to="/sign-in"
+                  className="rounded-md bg-slate-900 px-3 py-2 text-[13px] font-medium text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900"
+                >
+                  Sign in
+                </Link>
+              }
+            />
+          </Page>
+        </SidebarLayout>
       </Unauthenticated>
 
       <Authenticated>
@@ -95,9 +106,8 @@ function RoastContent() {
   const [result, setResult] = useState<RoastResult | null>(null)
   const [isRoasting, setIsRoasting] = useState(false)
   const [hoveredId, setHoveredId] = useState<number | null>(null)
-  const [commentsHeight, setCommentsHeight] = useState<number | null>(null)
+  const [fileName, setFileName] = useState('')
   const [pdfRenderVersion, setPdfRenderVersion] = useState(0)
-  const previewCardRef = useRef<HTMLDivElement | null>(null)
   const pdfContainerRef = useRef<HTMLDivElement | null>(null)
   const pageTextMapRef = useRef<Map<number, PageTextMap>>(new Map())
 
@@ -140,6 +150,8 @@ function RoastContent() {
       setError('Only PDF uploads are supported for roasting.')
       return
     }
+
+    setFileName(file.name)
 
     try {
       setStatus('Extracting text from PDF…')
@@ -288,19 +300,6 @@ function RoastContent() {
   }, [previewMode])
 
   useEffect(() => {
-    if (!previewCardRef.current || typeof ResizeObserver === 'undefined') return
-    const element = previewCardRef.current
-    const updateHeight = () => {
-      const height = element.getBoundingClientRect().height
-      if (height) setCommentsHeight(height)
-    }
-    updateHeight()
-    const observer = new ResizeObserver(updateHeight)
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [previewMode, pdfData, resumeText, result])
-
-  useEffect(() => {
     if (!pdfData) return
     const handleSelection = () => {
       if (previewMode !== 'pdf') return
@@ -398,259 +397,373 @@ function RoastContent() {
 
   const metrics = result?.metrics
 
+  const hasResume = Boolean(resumeText || pdfData)
+
   return (
     <SidebarLayout>
-      <div className="space-y-8">
-        <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Resume Roast</h1>
-            <p className="text-sm text-slate-500">Upload a resume or select a generated one. Optional job description boosts keyword checks.</p>
-          </div>
-          <button
-            type="button"
-            onClick={handleRoast}
-            disabled={isRoasting}
-            className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isRoasting ? 'Roasting…' : 'Roast My Resume'}
-          </button>
-        </header>
+      <Page className="max-w-6xl">
+        <PageHeader
+          title="Roast"
+          description="An honest read of a resume: how it parses, how it reads, and the lines that are not pulling their weight."
+          actions={
+            result ? (
+              <button
+                type="button"
+                onClick={handleRoast}
+                disabled={isRoasting || !hasResume}
+                className="rounded-md border border-slate-200 px-3 py-2 text-[13px] text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900"
+              >
+                {isRoasting ? "Roasting…" : "Roast again"}
+              </button>
+            ) : null
+          }
+        />
 
-        <div className="grid gap-6 lg:grid-cols-[1.1fr_1.4fr]">
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold">Resume Source</h2>
-              <div className="flex gap-2 text-xs">
-                <button
-                  type="button"
-                  onClick={() => handleModeChange('upload')}
-                  className={cn(
-                    'rounded-full px-3 py-1 font-semibold',
-                    sourceMode === 'upload'
-                      ? 'bg-primary text-white'
-                      : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200',
+        {/* Setup folds into the sidebar once there is a result to read. */}
+        <div
+          className={cn(
+            "grid gap-4",
+            result ? "lg:grid-cols-[1fr_20rem]" : "mx-auto max-w-2xl",
+          )}
+        >
+          <div className={cn("space-y-4", result && "lg:order-2")}>
+            {!result && (
+              <Panel>
+                <PanelHeader
+                  title="Resume"
+                  actions={
+                    <div className="flex items-center gap-1">
+                      <Choice
+                        active={sourceMode === "upload"}
+                        onClick={() => handleModeChange("upload")}
+                      >
+                        Upload
+                      </Choice>
+                      <Choice
+                        active={sourceMode === "generated"}
+                        onClick={() => handleModeChange("generated")}
+                      >
+                        Generated
+                      </Choice>
+                    </div>
+                  }
+                />
+                <div className="space-y-4 p-4">
+                  {sourceMode === "upload" ? (
+                    <label className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-slate-300 px-4 py-8 text-center transition-colors hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:hover:border-slate-600 dark:hover:bg-slate-900">
+                      <span className="text-[13px] font-medium text-slate-900 dark:text-slate-100">
+                        Choose a PDF
+                      </span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        {fileName || "PDF is the only format that keeps layout"}
+                      </span>
+                      <input
+                        type="file"
+                        accept="application/pdf,.pdf"
+                        className="sr-only"
+                        onChange={(event) =>
+                          handleFileUpload(event.target.files?.[0] || null)
+                        }
+                      />
+                    </label>
+                  ) : (
+                    <div className="space-y-2">
+                      <select
+                        value={selectedDocId}
+                        onChange={(event) => setSelectedDocId(event.target.value)}
+                        className="h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-[13px] text-slate-900 outline-none focus-visible:border-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                      >
+                        <option value="">Select a resume…</option>
+                        {resumeDocs.map((doc: any) => (
+                          <option key={doc._id} value={doc._id}>
+                            {(doc.job?.title || "Untitled resume") +
+                              (doc.job?.company ? ` · ${doc.job.company}` : "")}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => loadResumeFromDocument(selectedDoc)}
+                        disabled={!selectedDoc}
+                        className="rounded-md border border-slate-200 px-3 py-1.5 text-[13px] text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900"
+                      >
+                        Load resume
+                      </button>
+                    </div>
                   )}
-                >
-                  Upload PDF
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleModeChange('generated')}
-                  className={cn(
-                    'rounded-full px-3 py-1 font-semibold',
-                    sourceMode === 'generated'
-                      ? 'bg-primary text-white'
-                      : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200',
-                  )}
-                >
-                  Use Generated
-                </button>
-              </div>
-            </div>
 
-            <div className="mt-4 space-y-4">
-              {sourceMode === 'upload' ? (
-                <div className="space-y-3">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">PDF Upload Only</label>
-                  <input
-                    type="file"
-                    accept="application/pdf,.pdf"
-                    onChange={(event) => handleFileUpload(event.target.files?.[0] || null)}
-                    className="block w-full text-xs text-slate-500 file:mr-3 file:rounded-md file:border-0 file:bg-slate-200 file:px-3 file:py-1 file:text-xs file:font-semibold file:text-slate-700 hover:file:bg-slate-300 dark:file:bg-slate-700 dark:file:text-slate-200"
-                  />
-                  <p className="text-xs text-slate-500">Only PDF files are supported for roasting.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">Generated Resume</label>
-                  <select
-                    value={selectedDocId}
-                    onChange={(event) => setSelectedDocId(event.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                  >
-                    <option value="">Select a resume…</option>
-                    {resumeDocs.map((doc: any) => (
-                      <option key={doc._id} value={doc._id}>
-                        {(doc.job?.title || 'Untitled Resume') + (doc.job?.company ? ` · ${doc.job.company}` : '')}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="roast-jd"
+                      className="text-[11px] font-medium text-slate-500 dark:text-slate-400"
+                    >
+                      Job description — optional, enables the keyword check
+                    </label>
+                    <textarea
+                      id="roast-jd"
+                      value={jobDescription}
+                      onChange={(event) => setJobDescription(event.target.value)}
+                      placeholder="Paste the posting."
+                      className="min-h-[7rem] w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 text-[13px] leading-relaxed text-slate-900 outline-none placeholder:text-slate-300 focus-visible:border-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-700"
+                    />
+                  </div>
+
                   <button
                     type="button"
-                    onClick={() => loadResumeFromDocument(selectedDoc)}
-                    disabled={!selectedDoc}
-                    className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                    onClick={handleRoast}
+                    disabled={isRoasting || !hasResume}
+                    className="w-full rounded-md bg-slate-900 px-3 py-2 text-[13px] font-medium text-white transition-colors hover:bg-slate-700 disabled:opacity-40 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
                   >
-                    Load selected resume
+                    {isRoasting ? "Roasting…" : "Roast this resume"}
                   </button>
+
+                  {status && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {status}
+                    </p>
+                  )}
+                  {error && (
+                    <p className="text-xs text-rose-600 dark:text-rose-400">
+                      {error}
+                    </p>
+                  )}
                 </div>
-              )}
+              </Panel>
+            )}
 
-              <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">Job Description (Optional)</label>
-                <textarea
-                  value={jobDescription}
-                  onChange={(event) => setJobDescription(event.target.value)}
-                  className="min-h-[120px] w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                  placeholder="Paste the job description for keyword/fit checks..."
-                />
-              </div>
+            {result && (
+              <>
+                <Panel>
+                  <PanelHeader title="Scores" />
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    <MetricRow label="ATS format" metric={metrics?.ats} />
+                    <MetricRow label="Readability" metric={metrics?.readability} />
+                    <MetricRow label="XYZ impact" metric={metrics?.xyz} />
+                    <MetricRow label="Keyword match" metric={metrics?.keywords} />
+                  </div>
+                </Panel>
 
-              {status ? <p className="text-xs text-emerald-600">{status}</p> : null}
-              {error ? <p className="text-xs text-rose-500">{error}</p> : null}
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-            <h2 className="text-base font-semibold">Roast Metrics</h2>
-            <p className="mt-1 text-xs text-slate-500">ATS, readability, XYZ impact, and keyword coverage.</p>
-
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
-              {renderMetricCard('ATS Format', metrics?.ats)}
-              {renderMetricCard('Readability', metrics?.readability)}
-              {renderMetricCard('XYZ Format', metrics?.xyz)}
-              {renderMetricCard('Keyword Match', metrics?.keywords)}
-            </div>
-
-            {result?.summary ? (
-              <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Summary</p>
-                <p className="mt-2">{result.summary}</p>
-              </div>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-          <div
-            ref={previewCardRef}
-            className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800"
-          >
-            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-700">
-              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Resume Preview</h3>
-              <div className="flex items-center gap-2 text-xs">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const selection = window.getSelection()
-                    if (selection && !selection.isCollapsed) {
-                      selection.removeAllRanges()
+                <Panel>
+                  <PanelHeader
+                    title="Comments"
+                    meta={
+                      result.comments?.length
+                        ? `${result.comments.length}`
+                        : undefined
                     }
-                    setPreviewMode('pdf')
-                  }}
-                  disabled={!pdfData}
-                  className={cn(
-                    'rounded-full px-3 py-1 font-semibold transition-colors',
-                    previewMode === 'pdf'
-                      ? 'bg-primary text-white'
-                      : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200',
-                    !pdfData && 'opacity-50',
-                  )}
-                >
-                  PDF
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPreviewMode('text')}
-                  className={cn(
-                    'rounded-full px-3 py-1 font-semibold transition-colors',
-                    previewMode === 'text'
-                      ? 'bg-primary text-white'
-                      : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200',
-                  )}
-                >
-                  Text
-                </button>
-              </div>
-            </div>
-            <div className="p-4 text-sm leading-relaxed text-slate-700 dark:text-slate-200">
-              <div className={cn(previewMode === 'text' ? 'block' : 'hidden')}>
-                {resumeText ? (
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-inner dark:border-slate-700 dark:bg-slate-900">
-                    <div className="max-h-[520px] overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-200">
-                      {highlightedSegments.map((segment, index) => {
-                        if (!segment.commentId) return <span key={index}>{segment.text}</span>
-                        const isActive = hoveredId === segment.commentId
+                  />
+                  <ul className="max-h-[32rem] overflow-y-auto">
+                    {result.comments?.length ? (
+                      result.comments.map((comment, index) => {
+                        const id = comment.id ?? index + 1
+                        const isActive = hoveredId === id
                         return (
-                          <mark
-                            key={index}
-                            onMouseEnter={() => setHoveredId(segment.commentId || null)}
+                          <li
+                            key={id}
+                            onMouseEnter={() => setHoveredId(id)}
                             onMouseLeave={() => setHoveredId(null)}
                             className={cn(
-                              'rounded-sm bg-amber-200/70 px-1 py-0.5 text-slate-900',
-                              isActive && 'ring-2 ring-amber-400',
+                              "border-b border-slate-100 px-4 py-3 transition-colors last:border-b-0 dark:border-slate-800",
+                              isActive && "bg-amber-50 dark:bg-amber-950/30",
                             )}
                           >
-                            {segment.text}
-                            <sup className="ml-1 text-[10px] font-semibold text-slate-600">{segment.commentId}</sup>
-                          </mark>
+                            <div className="flex items-center gap-2 pb-1.5">
+                              <span className="text-[11px] font-medium tabular-nums text-slate-400 dark:text-slate-500">
+                                {id}
+                              </span>
+                              <span
+                                aria-hidden
+                                className={cn(
+                                  "h-1.5 w-1.5 rounded-full",
+                                  comment.severity === "spicy"
+                                    ? "bg-rose-500"
+                                    : "bg-amber-500",
+                                )}
+                              />
+                              <span className="text-[11px] capitalize text-slate-500 dark:text-slate-400">
+                                {comment.severity}
+                              </span>
+                            </div>
+                            <p className="text-xs italic text-slate-400 dark:text-slate-500">
+                              “{comment.quote}”
+                            </p>
+                            <p className="mt-1.5 text-[13px] leading-relaxed text-slate-700 dark:text-slate-200">
+                              {comment.comment}
+                            </p>
+                          </li>
                         )
-                      })}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-slate-400">Upload a PDF or select a resume to see highlighted feedback.</p>
-                )}
-              </div>
-
-              <div className={cn(previewMode === 'pdf' ? 'block' : 'hidden')}>
-                {pdfData ? (
-                  <div ref={pdfContainerRef} className="space-y-6" />
-                ) : (
-                  <p className="text-slate-400">Upload a PDF to render a preview.</p>
-                )}
-              </div>
-            </div>
+                      })
+                    ) : (
+                      <li className="px-4 py-6 text-center text-xs text-slate-400">
+                        Nothing flagged.
+                      </li>
+                    )}
+                  </ul>
+                </Panel>
+              </>
+            )}
           </div>
 
-          <div
-            className="flex min-h-0 flex-col rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800"
-            style={commentsHeight ? { height: `${commentsHeight}px` } : undefined}
-          >
-            <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-700">
-              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Comments</h3>
-            </div>
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
-              {result?.comments?.length ? (
-                result.comments.map((comment, index) => {
-                  const id = comment.id ?? index + 1
-                  const isActive = hoveredId === id
-                  return (
-                    <div
-                      key={id}
-                      onMouseEnter={() => setHoveredId(id)}
-                      onMouseLeave={() => setHoveredId(null)}
-                      className={cn(
-                        'rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200',
-                        isActive && 'ring-2 ring-amber-400',
-                      )}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Comment {id}</span>
-                        <span
-                          className={cn(
-                            'rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase',
-                            comment.severity === 'spicy'
-                              ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-300'
-                              : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
-                          )}
-                        >
-                          {comment.severity}
-                        </span>
+          {result && (
+            <div className="space-y-4 lg:order-1">
+              <Panel>
+                <div className="px-4 py-3.5">
+                  <p className="text-[13px] leading-relaxed text-slate-700 dark:text-slate-200">
+                    {result.summary}
+                  </p>
+                </div>
+              </Panel>
+
+              <Panel className="overflow-hidden">
+                <PanelHeader
+                  title="The resume"
+                  actions={
+                    <div className="flex items-center gap-1">
+                      <Choice
+                        active={previewMode === "pdf"}
+                        disabled={!pdfData}
+                        onClick={() => {
+                          const selection = window.getSelection()
+                          if (selection && !selection.isCollapsed) {
+                            selection.removeAllRanges()
+                          }
+                          setPreviewMode("pdf")
+                        }}
+                      >
+                        Page
+                      </Choice>
+                      <Choice
+                        active={previewMode === "text"}
+                        onClick={() => setPreviewMode("text")}
+                      >
+                        Text
+                      </Choice>
+                    </div>
+                  }
+                />
+
+                <div className="p-4">
+                  <div className={cn(previewMode === "text" ? "block" : "hidden")}>
+                    {resumeText ? (
+                      <div className="max-h-[36rem] overflow-y-auto whitespace-pre-wrap text-[13px] leading-relaxed text-slate-700 dark:text-slate-200">
+                        {highlightedSegments.map((segment, index) => {
+                          if (!segment.commentId)
+                            return <span key={index}>{segment.text}</span>
+                          const isActive = hoveredId === segment.commentId
+                          return (
+                            <mark
+                              key={index}
+                              onMouseEnter={() =>
+                                setHoveredId(segment.commentId || null)
+                              }
+                              onMouseLeave={() => setHoveredId(null)}
+                              className={cn(
+                                "rounded-[2px] bg-amber-100 px-0.5 text-slate-900 transition-colors dark:bg-amber-500/25 dark:text-amber-50",
+                                isActive && "bg-amber-200 dark:bg-amber-500/45",
+                              )}
+                            >
+                              {segment.text}
+                              <sup className="ml-0.5 text-[10px] font-medium text-slate-500">
+                                {segment.commentId}
+                              </sup>
+                            </mark>
+                          )
+                        })}
                       </div>
-                      <p className="mt-2 text-xs italic text-slate-500">“{comment.quote}”</p>
-                      <p className="mt-2 text-sm">{comment.comment}</p>
-                    </div>
-                  )
-                })
-              ) : (
-                <p className="text-sm text-slate-400">Run a roast to get comments.</p>
-              )}
+                    ) : (
+                      <p className="py-8 text-center text-sm text-slate-400">
+                        No text extracted.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className={cn(previewMode === "pdf" ? "block" : "hidden")}>
+                    {pdfData ? (
+                      <div ref={pdfContainerRef} className="space-y-4" />
+                    ) : (
+                      <p className="py-8 text-center text-sm text-slate-400">
+                        This resume came from your documents, so there is no PDF to
+                        show — read it as text.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </Panel>
             </div>
-          </div>
+          )}
         </div>
-      </div>
+      </Page>
     </SidebarLayout>
+  )
+}
+
+/** A two-or-three-way switch. Reads as one control, not as buttons. */
+function Choice({
+  active,
+  onClick,
+  disabled,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  disabled?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={active}
+      className={cn(
+        "rounded px-2 py-1 text-xs transition-colors disabled:opacity-40",
+        active
+          ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+          : "text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
+/** Score as a row: number first, the bar underneath it, the note after. */
+function MetricRow({
+  label,
+  metric,
+}: {
+  label: string
+  metric?: { score: number | null; note: string }
+}) {
+  const score =
+    typeof metric?.score === "number"
+      ? Math.max(0, Math.min(100, metric.score))
+      : null
+
+  return (
+    <div className="px-4 py-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-[13px] text-slate-600 dark:text-slate-300">
+          {label}
+        </span>
+        <span className="text-[13px] font-medium tabular-nums text-slate-900 dark:text-slate-100">
+          {score === null ? "Not scored" : `${score}`}
+        </span>
+      </div>
+      {score !== null && (
+        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+          <div
+            className="h-full rounded-full bg-slate-900 transition-[width] duration-500 ease-out motion-reduce:transition-none dark:bg-slate-100"
+            style={{ width: `${score}%` }}
+          />
+        </div>
+      )}
+      {metric?.note && (
+        <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+          {metric.note}
+        </p>
+      )}
+    </div>
   )
 }
 
@@ -859,23 +972,3 @@ function resumeDataToText(data: any): string {
   return parts.join('\n')
 }
 
-function renderMetricCard(label: string, metric?: { score: number | null; note: string }) {
-  const score = typeof metric?.score === 'number' ? Math.max(0, Math.min(100, metric.score)) : null
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
-        <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
-          {score === null ? 'N/A' : `${score}%`}
-        </span>
-      </div>
-      <div className="mt-2 h-2 w-full rounded-full bg-slate-100 dark:bg-slate-800">
-        <div
-          className="h-2 rounded-full bg-primary"
-          style={{ width: `${score ?? 0}%` }}
-        />
-      </div>
-      <p className="mt-2 text-xs text-slate-500">{metric?.note || 'No notes yet.'}</p>
-    </div>
-  )
-}

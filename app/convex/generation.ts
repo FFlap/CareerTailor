@@ -46,7 +46,7 @@ const getMyTemplateRef = makeFunctionReference<"query">(
 
 export const generateDocuments = action({
   args: {
-    job: jobInput,
+    job: v.optional(jobInput),
     documentType: v.union(
       v.literal("resume"),
       v.literal("cover_letter"),
@@ -70,26 +70,36 @@ export const generateDocuments = action({
       throw new Error("Complete onboarding before generating documents.");
     }
 
-    const jobId = await ctx.runMutation(upsertMyJobRef, {
-      url: args.job.url,
-      jobId: args.job.jobId ?? "",
-      source: args.job.source ?? "extension",
-      title: args.job.title ?? "",
-      company: args.job.company ?? "",
-      description: args.job.description ?? "",
-      addedAt: args.job.addedAt,
-    });
+    // No url means no posting to track and nothing to tailor towards.
+    const hasJob = Boolean(args.job?.url?.trim());
+    const jobId = hasJob
+      ? await ctx.runMutation(upsertMyJobRef, {
+          url: args.job!.url,
+          jobId: args.job!.jobId ?? "",
+          source: args.job!.source ?? "extension",
+          title: args.job!.title ?? "",
+          company: args.job!.company ?? "",
+          description: args.job!.description ?? "",
+          addedAt: args.job!.addedAt,
+        })
+      : undefined;
 
     const baseInput = {
       user_profile: profile,
-      job: {
-        title: args.job.title ?? "",
-        company: args.job.company ?? "",
-        description: args.job.description ?? "",
-        url: args.job.url,
-      },
+      job: hasJob
+        ? {
+            title: args.job!.title ?? "",
+            company: args.job!.company ?? "",
+            description: args.job!.description ?? "",
+            url: args.job!.url,
+          }
+        : null,
       preferences: args.preferences,
     };
+
+    const targetingInstruction = hasJob
+      ? "Tailor the document to the target job description."
+      : "There is no target job. Write a general document that presents the profile at its strongest, ordered by impact rather than by any particular role.";
 
     const documents: { resumeId?: string; coverId?: string } = {};
 
@@ -125,6 +135,7 @@ export const generateDocuments = action({
         "Avoid fabrication. Prefer quantified impact when the profile includes metrics.",
         "Treat user_profile as the ONLY source of the candidate's factual experience, education, skills, projects, contact details, dates, employers, and achievements.",
         "Treat job as the TARGET ROLE only. Use the job title, company, and description to tailor wording, keywords, ordering, summary, and emphasis.",
+        targetingInstruction,
         "Never copy responsibilities, qualifications, technologies, employers, projects, or achievements from the job description into the resume unless they are clearly supported by user_profile.",
         "Never add the target company or target job title as past or current experience unless user_profile already contains that employer and role.",
         "Always include projects from user_profile.projects in the projects array when they exist. You may tailor their bullets and ordering for relevance, but do not drop them.",
@@ -240,6 +251,7 @@ export const generateDocuments = action({
         "Do not include trailing commas.",
         "Replace line breaks in strings with \\n.",
         "Avoid fabrication. Keep it concise and role-specific.",
+        targetingInstruction,
         ...coverLetterPreferenceInstructions(args.preferences),
         `Output schema: ${JSON.stringify(
           {
@@ -273,13 +285,13 @@ export const generateDocuments = action({
             templateSource: customCoverSource,
             coverLetter,
             profile,
-            job: args.job,
+            job: hasJob ? args.job : null,
           })
         : buildCoverLetterTypstSource({
             templateId: args.coverTemplateId,
             coverLetter,
             profile,
-            job: args.job,
+            job: hasJob ? args.job : null,
           });
 
       const coverDocId = await ctx.runMutation(createGeneratedDocumentRef, {

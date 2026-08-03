@@ -1,3 +1,4 @@
+import { X } from 'lucide-react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState, type ClipboardEvent } from 'react'
 import { AuthLoading, useAction, useConvexAuth, useMutation, useQuery } from 'convex/react'
@@ -6,7 +7,9 @@ import {
   renderTypstToCanvasInBrowser,
 } from '@/lib/typst/renderClient'
 import { api } from '@/lib/convex'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Page, PageHeader, Panel, PanelHeader } from '@/components/ui/page'
 import SidebarLayout from '@/components/SidebarLayout'
 import { makeCustomTemplateId, withSampleData } from '@/lib/customTemplates'
 import {
@@ -50,33 +53,16 @@ const COVER_SOURCES: Record<CoverTemplateId, string> = {
 }
 
 function TemplatesPage() {
-  const { isAuthenticated, isLoading } = useConvexAuth()
-  const showSidebar = isAuthenticated && !isLoading
-
-  if (showSidebar) {
-    return (
-      <SidebarLayout>
-        <AuthLoading>
-          <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
-            <p className="text-sm text-slate-500 dark:text-slate-400">Loading...</p>
-          </div>
-        </AuthLoading>
-        <TemplatesContent />
-      </SidebarLayout>
-    )
-  }
-
+  // Signed-out visitors get the same frame; the nav simply shows fewer links.
   return (
-    <main className="min-h-screen bg-slate-50 py-12 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <SidebarLayout>
       <AuthLoading>
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-center py-12">
-            <p className="text-sm text-slate-500 dark:text-slate-400">Loading...</p>
-          </div>
-        </div>
+        <Page>
+          <p className="text-sm text-slate-500">Loading…</p>
+        </Page>
       </AuthLoading>
       <TemplatesContent />
-    </main>
+    </SidebarLayout>
   )
 }
 
@@ -355,167 +341,44 @@ function TemplatesContent() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-10 px-4 sm:px-6 lg:px-8">
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              Templates Gallery
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight">Browse resume + cover letter templates</h1>
-            <p className="max-w-2xl text-base text-slate-600 dark:text-slate-400">
-              Click a template to preview how it renders. Resume templates sit on the left, cover letters on
-              the right.
-            </p>
-          </div>
-          <Button
+    <Page className="max-w-6xl">
+      <PageHeader
+        title="Templates"
+        description="Pick one to see how it renders. Your own Typst templates sit alongside the built-in ones."
+        actions={
+          <button
             type="button"
             onClick={() => setCreateOpen(true)}
             disabled={!isAuthenticated}
-            className="self-start"
+            className="rounded-md bg-slate-900 px-3 py-2 text-[13px] font-medium text-white transition-colors hover:bg-slate-700 disabled:opacity-40 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
           >
-            {isAuthenticated ? 'Add Template' : 'Sign in to add templates'}
-          </Button>
-        </header>
+            {isAuthenticated ? "Add template" : "Sign in to add"}
+          </button>
+        }
+      />
 
-        <div className="grid gap-8 lg:grid-cols-2">
-          <section className="space-y-6 rounded-3xl border border-indigo-100 bg-white p-6 shadow-sm dark:border-indigo-900/40 dark:bg-slate-900">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Resume templates</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Pick a resume layout to preview.</p>
-              </div>
-              <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300">
-                Resume
-              </span>
-            </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <TemplateColumn
+          title="Resumes"
+          status={resumeStatus}
+          options={resumeOptions}
+          selectedId={selectedResume}
+          onSelect={(id) => setSelectedResume(id as ResumeSelection)}
+          onDelete={(rawId, label) => handleDeleteTemplate(rawId, label, "resume")}
+          previewRef={resumePreviewRef}
+        />
+        <TemplateColumn
+          title="Cover letters"
+          status={coverStatus}
+          options={coverOptions}
+          selectedId={selectedCover}
+          onSelect={(id) => setSelectedCover(id as CoverSelection)}
+          onDelete={(rawId, label) => handleDeleteTemplate(rawId, label, "cover_letter")}
+          previewRef={coverPreviewRef}
+        />
+      </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              {resumeOptions.map((template: any) => {
-                const active = template.id === selectedResume
-                return (
-                  <div key={template.id} className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedResume(template.id)}
-                      className={`w-full rounded-2xl border px-4 py-3 text-left transition-all focus:outline-none focus:ring-2 focus:ring-indigo-400/60 ${
-                        active
-                          ? 'border-indigo-300 bg-indigo-50 shadow-sm dark:border-indigo-500/50 dark:bg-indigo-500/10'
-                          : 'border-slate-200 bg-white hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-sm dark:border-slate-800 dark:bg-slate-950'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                          {template.label}
-                        </div>
-                        {template.kind === 'custom' && (
-                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                            Custom
-                          </span>
-                        )}
-                      </div>
-                      <div className="mt-1 text-xs text-slate-500">Resume template</div>
-                    </button>
-                    {template.kind === 'custom' && template.rawId && (
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          handleDeleteTemplate(template.rawId, template.label, 'resume')
-                        }}
-                        className="absolute right-3 top-3 rounded-full p-1 text-slate-400 hover:bg-white/80 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-900"
-                        aria-label="Delete template"
-                      >
-                        <span className="material-icons-outlined text-base">delete</span>
-                      </button>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-
-            <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 dark:border-indigo-500/20 dark:bg-indigo-500/5">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-indigo-700 dark:text-indigo-200">Preview</h3>
-                {resumeStatus && (
-                  <span className="text-xs text-slate-500 dark:text-slate-400">{resumeStatus}</span>
-                )}
-              </div>
-              <div className="typst-preview min-h-[520px] w-full overflow-hidden rounded-xl bg-slate-50 shadow-inner dark:bg-slate-950">
-                <div ref={resumePreviewRef} className="w-full" />
-              </div>
-            </div>
-          </section>
-
-          <section className="space-y-6 rounded-3xl border border-emerald-100 bg-white p-6 shadow-sm dark:border-emerald-900/40 dark:bg-slate-900">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Cover letter templates</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Preview a cover letter format.</p>
-              </div>
-              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300">
-                Cover Letter
-              </span>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              {coverOptions.map((template: any) => {
-                const active = template.id === selectedCover
-                return (
-                  <div key={template.id} className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedCover(template.id)}
-                      className={`w-full rounded-2xl border px-4 py-3 text-left transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400/60 ${
-                        active
-                          ? 'border-emerald-300 bg-emerald-50 shadow-sm dark:border-emerald-500/50 dark:bg-emerald-500/10'
-                          : 'border-slate-200 bg-white hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-sm dark:border-slate-800 dark:bg-slate-950'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                          {template.label}
-                        </div>
-                        {template.kind === 'custom' && (
-                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                            Custom
-                          </span>
-                        )}
-                      </div>
-                      <div className="mt-1 text-xs text-slate-500">Cover letter template</div>
-                    </button>
-                    {template.kind === 'custom' && template.rawId && (
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          handleDeleteTemplate(template.rawId, template.label, 'cover_letter')
-                        }}
-                        className="absolute right-3 top-3 rounded-full p-1 text-slate-400 hover:bg-white/80 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-900"
-                        aria-label="Delete template"
-                      >
-                        <span className="material-icons-outlined text-base">delete</span>
-                      </button>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-
-            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/5">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-emerald-700 dark:text-emerald-200">Preview</h3>
-                {coverStatus && (
-                  <span className="text-xs text-slate-500 dark:text-slate-400">{coverStatus}</span>
-                )}
-              </div>
-              <div className="typst-preview min-h-[520px] w-full overflow-hidden rounded-xl bg-emerald-50 shadow-inner dark:bg-slate-950">
-                <div ref={coverPreviewRef} className="w-full" />
-              </div>
-            </div>
-          </section>
-        </div>
-
-        {createOpen && (
+  {createOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-8 backdrop-blur-sm">
             <div className="w-full max-w-3xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
               <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
@@ -532,7 +395,7 @@ function TemplatesContent() {
                   className="rounded-full p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
                   aria-label="Close"
                 >
-                  <span className="material-icons-outlined text-lg">close</span>
+                  <X className="h-4 w-4" />
                 </button>
               </div>
 
@@ -629,9 +492,7 @@ function TemplatesContent() {
                           />
                         ) : (
                           <>
-                            <span className="material-icons-outlined text-3xl text-slate-400">
-                              add_photo_alternate
-                            </span>
+                            
                             <p className="mt-2">Paste an image or upload a screenshot.</p>
                           </>
                         )}
@@ -680,6 +541,78 @@ function TemplatesContent() {
             </div>
           </div>
         )}
-    </div>
+    </Page>
+  )
+}
+
+/** One column: the list of templates, then the rendered preview under it. */
+function TemplateColumn({
+  title,
+  status,
+  options,
+  selectedId,
+  onSelect,
+  onDelete,
+  previewRef,
+}: {
+  title: string
+  status?: string
+  options: any[]
+  selectedId: string
+  onSelect: (id: string) => void
+  onDelete: (rawId: string, label: string) => void
+  previewRef: React.RefObject<HTMLDivElement | null>
+}) {
+  return (
+    <Panel className="overflow-hidden">
+      <PanelHeader title={title} meta={status || undefined} />
+
+      <ul className="flex flex-wrap gap-1.5 border-b border-slate-200 p-3 dark:border-slate-800">
+        {options.map((template: any) => {
+          const active = template.id === selectedId
+          return (
+            <li key={template.id} className="group/tpl relative">
+              <button
+                type="button"
+                onClick={() => onSelect(template.id)}
+                aria-pressed={active}
+                className={cn(
+                  'rounded-md border px-2.5 py-1.5 text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15',
+                  active
+                    ? 'border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900'
+                    : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:text-slate-100',
+                )}
+              >
+                {template.label}
+                {template.kind === 'custom' && (
+                  <span className={cn('ml-1.5', active ? 'opacity-60' : 'text-slate-400')}>
+                    custom
+                  </span>
+                )}
+              </button>
+              {template.kind === 'custom' && template.rawId && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onDelete(template.rawId, template.label)
+                  }}
+                  aria-label={`Delete ${template.label}`}
+                  className="absolute -right-1 -top-1 rounded-full border border-slate-200 bg-white p-0.5 text-slate-400 opacity-0 transition-opacity hover:text-slate-900 focus-visible:opacity-100 group-hover/tpl:opacity-100 dark:border-slate-700 dark:bg-slate-900 dark:hover:text-slate-100"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+
+      <div className="bg-slate-50 p-4 dark:bg-slate-950">
+        <div className="typst-preview min-h-[420px] w-full overflow-hidden">
+          <div ref={previewRef} className="w-full" />
+        </div>
+      </div>
+    </Panel>
   )
 }

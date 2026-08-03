@@ -109,7 +109,6 @@ export function PipelineSankey({
       col.forEach((id) => colByNodeId.set(id, idx))
     })
 
-    // Build initial node values from flow.
     const incoming = new Map<string, number>()
     const outgoing = new Map<string, number>()
     for (const link of links) {
@@ -158,7 +157,6 @@ export function PipelineSankey({
     }
     scale = scaleCandidates.length ? Math.min(...scaleCandidates) : 0
 
-    // Place nodes per column, centered vertically.
     for (let c = 0; c < cols; c += 1) {
       const colNodeIds = nodeColumns[c]
       const colNodes = colNodeIds
@@ -267,18 +265,22 @@ export function PipelineSankey({
         transform: `translate(${clampNumber(hover.x, 0, Math.max(0, width - 220))}px, ${clampNumber(hover.y, 0, Math.max(0, height - 64))}px)`,
       }}
     >
-      <div className="rounded-lg border border-slate-200 bg-white/90 px-3 py-2 text-xs text-slate-800 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-950/80 dark:text-slate-100">
+      <div className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
         {hover.kind === 'node' ? (
           <>
-            <p className="font-semibold">{hover.node.name}</p>
-            <p className="text-slate-600 dark:text-slate-300">{formatCount(hover.node.value)} roles</p>
+            <p className="font-medium">{hover.node.name}</p>
+            <p className="mt-0.5 tabular-nums text-slate-500 dark:text-slate-400">
+              {formatCount(hover.node.value)} jobs
+            </p>
           </>
         ) : (
           <>
-            <p className="font-semibold">
-              {hover.link.source} -&gt; {hover.link.target}
+            <p className="font-medium">
+              {hover.link.source} &rarr; {hover.link.target}
             </p>
-            <p className="text-slate-600 dark:text-slate-300">{formatCount(hover.link.value)} roles</p>
+            <p className="mt-0.5 tabular-nums text-slate-500 dark:text-slate-400">
+              {formatCount(hover.link.value)} jobs
+            </p>
           </>
         )}
       </div>
@@ -293,12 +295,6 @@ export function PipelineSankey({
     <div className={['relative', className].filter(Boolean).join(' ')} style={{ width, height }}>
       {tooltip}
       <svg width={width} height={height} role="img" aria-label="Pipeline Sankey chart">
-        <defs>
-          <filter id="sankeyShadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.12" />
-          </filter>
-        </defs>
-
         {/* Links (draw first) */}
         {layout.links.map((link, idx) => {
           const bandColor = link.source.color
@@ -312,9 +308,9 @@ export function PipelineSankey({
               <path
                 d={link.path}
                 fill={bandColor}
-                fillOpacity={isDimmed ? 0.18 : isFocused ? 0.55 : 0.38}
-                stroke={isFocused ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.92)'}
-                strokeWidth={isFocused ? 2.6 : 2.2}
+                fillOpacity={isDimmed ? 0.16 : isFocused ? 0.75 : 0.42}
+                stroke="hsl(var(--card))"
+                strokeWidth={2}
                 onMouseEnter={(event) => {
                   const bounds = (event.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect()
                   setHover({
@@ -354,18 +350,23 @@ export function PipelineSankey({
 
         {/* Nodes (on top) */}
         {layout.nodes.map((node) => {
-          const label = `${node.name}: ${formatCount(node.value)}`
           const isFocused =
             hoveredNodeId === node.id ||
             (hoveredLinkKey !== null && (hoveredLinkKey.startsWith(`${node.id}::`) || hoveredLinkKey.endsWith(`::${node.id}`)))
           const isDimmed = (hoveredLinkKey !== null || hoveredNodeId !== null) && !isFocused
-          const labelWidth = 156
+          // Labels sit outside the flow; the last column has no room to its right.
+          const labelWidth = 132
           const labelHeight = 28
-          const labelX = node.x1 + 10
-          const labelY = node.y0 + (node.y1 - node.y0) / 2 - labelHeight / 2
+          const isLastColumn = node.col === nodeColumns.length - 1
+          const labelX = isLastColumn ? node.x0 - labelWidth - 10 : node.x1 + 10
+          // A node spanning its own band would sit under the label.
+          const isTall = node.y1 - node.y0 > height * 0.5
+          const labelY = isTall
+            ? node.y0 + 6
+            : node.y0 + (node.y1 - node.y0) / 2 - labelHeight / 2
 
           return (
-            <g key={node.id} filter="url(#sankeyShadow)">
+            <g key={node.id}>
               <rect
                 x={node.x0}
                 y={node.y0}
@@ -374,8 +375,8 @@ export function PipelineSankey({
                 rx={8}
                 fill={node.color}
                 opacity={isDimmed ? 0.42 : 0.98}
-                stroke={isFocused ? 'rgba(255,255,255,0.9)' : 'transparent'}
-                strokeWidth={isFocused ? 2 : 0}
+                stroke={isFocused ? 'hsl(var(--foreground))' : 'transparent'}
+                strokeWidth={isFocused ? 1.5 : 0}
                 onMouseEnter={(event) => {
                   const bounds = (event.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect()
                   setHover({
@@ -405,8 +406,18 @@ export function PipelineSankey({
                 height={labelHeight}
                 style={{ pointerEvents: 'none' }}
               >
-                <div className="pointer-events-none h-full w-full rounded-md bg-white/70 px-2 py-1 text-sm font-semibold text-slate-900 shadow-sm backdrop-blur dark:bg-slate-950/60 dark:text-white">
-                  {label}
+                <div
+                  className={[
+                    'pointer-events-none flex h-full w-full items-center whitespace-nowrap text-[11px] text-slate-500 dark:text-slate-400',
+                    isLastColumn ? 'justify-end' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                >
+                  <span className="font-medium text-slate-900 dark:text-slate-100">
+                    {node.name}
+                  </span>
+                  <span className="ml-1.5 tabular-nums">{formatCount(node.value)}</span>
                 </div>
               </foreignObject>
             </g>

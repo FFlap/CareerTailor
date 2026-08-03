@@ -1,192 +1,177 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { Authenticated, AuthLoading, Unauthenticated, useQuery } from 'convex/react'
-import { useCallback, useEffect, useState } from 'react'
+import { Link, createFileRoute } from "@tanstack/react-router";
 import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
+  Authenticated,
+  AuthLoading,
+  Unauthenticated,
+  useQuery,
+} from "convex/react";
+import { useCallback, useEffect, useState } from "react";
+import {
   CartesianGrid,
-  Cell,
-  Legend,
-  Pie,
-  PieChart,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
-} from 'recharts'
+} from "recharts";
 
-import { api } from '@/lib/convex'
-import SidebarLayout from '@/components/SidebarLayout'
-import { PipelineSankey } from '@/components/PipelineSankey'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { cn } from '@/lib/utils'
+import { PipelineSankey } from "@/components/PipelineSankey";
+import SidebarLayout from "@/components/SidebarLayout";
+import {
+  EmptyState,
+  Page,
+  PageHeader,
+  Panel,
+  PanelHeader,
+  Stat,
+} from "@/components/ui/page";
+import { api } from "@/lib/convex";
+import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute('/statistics')({
+export const Route = createFileRoute("/statistics")({
   component: StatisticsPage,
-})
+});
 
-const STATUS_COLORS = {
-  viewed: '#94a3b8',
-  applied: '#3b82f6',
-  interview: '#f59e0b',
-  accepted: '#10b981',
-  ghosted: '#f43f5e',
+/** Model ids stay verbatim; human-facing keys get a light touch. */
+function titleCase(value: string) {
+  return value.replace(/\b[a-z]/g, (char) => char.toUpperCase());
 }
 
-const CHART_GRID_STROKE = '#e2e8f0'
+/** Dark mode gets its own steps; the light ramp vanishes on a dark surface. */
+const SANKEY_LIGHT = ["#334155", "#64748b", "#94a3b8", "#cbd5e1"];
+const SANKEY_DARK = ["#e2e8f0", "#94a3b8", "#64748b", "#475569"];
 
-function useElementSize<T extends HTMLElement>() {
-  const [node, setNode] = useState<T | null>(null)
-  const [size, setSize] = useState({ width: 0, height: 0 })
+/** Measures the panel so the SVG can be drawn at its real width. */
+function useElementWidth<T extends HTMLElement>() {
+  const [node, setNode] = useState<T | null>(null);
+  const [width, setWidth] = useState(0);
 
-  const ref = useCallback((element: T | null) => {
-    setNode(element)
-  }, [])
+  const ref = useCallback((element: T | null) => setNode(element), []);
 
   useEffect(() => {
-    const el = node
-    if (!el) return
+    if (!node || typeof ResizeObserver === "undefined") return;
+    const update = () =>
+      setWidth(Math.max(0, Math.round(node.getBoundingClientRect().width) - 32));
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [node]);
 
-    function updateFromElement(element: HTMLElement) {
-      const rect = element.getBoundingClientRect()
-      const width = Math.max(0, Math.round(rect.width))
-      const height = Math.max(0, Math.round(rect.height))
-      setSize((prev) => (prev.width === width && prev.height === height ? prev : { width, height }))
-    }
-
-    updateFromElement(el)
-
-    if (typeof ResizeObserver === 'undefined') return
-    const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const target = entry.target as HTMLElement
-        updateFromElement(target)
-      }
-    })
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [node])
-
-  return { ref, size }
+  return { ref, width };
 }
 
+function percent(value: number) {
+  return `${Math.round((value ?? 0) * 100)}%`;
+}
+
+/** Dev-only sample so the page can be designed and reviewed without an account. */
 const DEMO_STATS = {
-  jobCounts: { total: 42, viewed: 18, applied: 12, interview: 6, accepted: 3, ghosted: 3 },
-  jobRates: {
-    appliedRate: (12 + 6 + 3 + 3) / 42,
-    interviewRate: (6 + 3) / (12 + 6 + 3 + 3),
-    acceptanceRate: 3 / (6 + 3),
-    ghostRate: 3 / (12 + 6 + 3 + 3),
+  jobCounts: {
+    total: 42,
+    viewed: 18,
+    applied: 12,
+    interview: 6,
+    accepted: 3,
+    ghosted: 3,
   },
-  jobTrend: [
-    { label: 'W1', viewed: 1, applied: 1, interview: 0, accepted: 0, ghosted: 0, added: 2 },
-    { label: 'W2', viewed: 2, applied: 1, interview: 0, accepted: 0, ghosted: 0, added: 3 },
-    { label: 'W3', viewed: 1, applied: 2, interview: 0, accepted: 0, ghosted: 0, added: 3 },
-    { label: 'W4', viewed: 2, applied: 1, interview: 1, accepted: 0, ghosted: 0, added: 4 },
-    { label: 'W5', viewed: 1, applied: 2, interview: 1, accepted: 0, ghosted: 0, added: 4 },
-    { label: 'W6', viewed: 2, applied: 1, interview: 1, accepted: 0, ghosted: 1, added: 5 },
-    { label: 'W7', viewed: 1, applied: 1, interview: 1, accepted: 1, ghosted: 0, added: 4 },
-    { label: 'W8', viewed: 2, applied: 1, interview: 0, accepted: 1, ghosted: 0, added: 4 },
-    { label: 'W9', viewed: 2, applied: 1, interview: 1, accepted: 0, ghosted: 0, added: 4 },
-    { label: 'W10', viewed: 2, applied: 0, interview: 1, accepted: 0, ghosted: 1, added: 4 },
-    { label: 'W11', viewed: 1, applied: 1, interview: 0, accepted: 1, ghosted: 0, added: 3 },
-    { label: 'W12', viewed: 1, applied: 1, interview: 0, accepted: 0, ghosted: 1, added: 3 },
-  ],
+  jobRates: {
+    appliedRate: 24 / 42,
+    interviewRate: 9 / 24,
+    acceptanceRate: 3 / 9,
+    ghostRate: 3 / 24,
+  },
+  jobTrend: Array.from({ length: 12 }, (_, i) => ({
+    label: `W${i + 1}`,
+    added: [2, 3, 3, 4, 4, 5, 4, 4, 4, 4, 3, 3][i],
+  })),
+  documentTrend: Array.from({ length: 12 }, (_, i) => ({
+    resumes: [1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 1, 1][i],
+    coverLetters: [0, 1, 0, 1, 1, 2, 1, 1, 0, 1, 2, 1][i],
+  })),
   staleJobs: 2,
   docCounts: { total: 28, resumes: 16, coverLetters: 12 },
-  documentTrend: [
-    { label: 'W1', resumes: 1, coverLetters: 0 },
-    { label: 'W2', resumes: 1, coverLetters: 1 },
-    { label: 'W3', resumes: 2, coverLetters: 0 },
-    { label: 'W4', resumes: 1, coverLetters: 1 },
-    { label: 'W5', resumes: 2, coverLetters: 1 },
-    { label: 'W6', resumes: 1, coverLetters: 2 },
-    { label: 'W7', resumes: 2, coverLetters: 1 },
-    { label: 'W8', resumes: 1, coverLetters: 1 },
-    { label: 'W9', resumes: 2, coverLetters: 0 },
-    { label: 'W10', resumes: 1, coverLetters: 1 },
-    { label: 'W11', resumes: 1, coverLetters: 2 },
-    { label: 'W12', resumes: 1, coverLetters: 1 },
-  ],
   docTop: {
     templates: [
-      { key: 'basic_resume', count: 9 },
-      { key: 'modern_cv', count: 6 },
-      { key: 'modern_cv_cover', count: 5 },
-      { key: 'custom:example', count: 4 },
+      { key: "basic_resume", count: 9 },
+      { key: "modern_cv", count: 6 },
+      { key: "modern_cv_cover", count: 5 },
+      { key: "custom:example", count: 4 },
     ],
     tones: [
-      { key: 'Confident', count: 10 },
-      { key: 'Direct', count: 8 },
-      { key: 'Friendly', count: 6 },
-      { key: 'Formal', count: 4 },
-    ],
-    models: [
-      { key: 'gpt-4.1', count: 12 },
-      { key: 'claude-3.7', count: 9 },
-      { key: 'gpt-4o-mini', count: 7 },
+      { key: "Confident", count: 10 },
+      { key: "Direct", count: 8 },
+      { key: "Friendly", count: 6 },
     ],
   },
-}
+};
 
 function StatisticsPage() {
-  const [demoEnabled, setDemoEnabled] = useState(false)
+  const [demo, setDemo] = useState(false);
 
   useEffect(() => {
-    if (!import.meta.env.DEV) return
-    const params = new URLSearchParams(window.location.search)
-    setDemoEnabled(params.get('demo') === '1')
-  }, [])
+    if (!import.meta.env.DEV) return;
+    setDemo(new URLSearchParams(window.location.search).get("demo") === "1");
+  }, []);
 
-  if (demoEnabled) {
-    return <StatisticsBody stats={DEMO_STATS as any} isLoading={false} />
-  }
+  if (demo) return <StatisticsBody stats={DEMO_STATS as any} />;
 
   return (
     <>
       <AuthLoading>
-        <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-          <p className="text-sm text-slate-500 dark:text-slate-400">Loading...</p>
-        </div>
+        <SidebarLayout>
+          <Page>
+            <p className="text-sm text-slate-500">Loading…</p>
+          </Page>
+        </SidebarLayout>
       </AuthLoading>
 
       <Unauthenticated>
-        <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-          <div className="text-center">
-            <h1 className="mb-4 text-2xl font-bold text-slate-900 dark:text-white">Access Denied</h1>
-            <p className="mb-6 text-slate-600 dark:text-slate-400">
-              You need to{' '}
-              <Link to="/sign-in" className="text-primary hover:underline">
-                sign in
-              </Link>{' '}
-              to view this page.
-            </p>
-          </div>
-        </div>
+        <SidebarLayout>
+          <Page>
+            <EmptyState
+              title="Sign in to see your statistics"
+              description="Your pipeline is private to your account."
+              action={
+                <Link
+                  to="/sign-in"
+                  className="rounded-md bg-slate-900 px-3 py-2 text-[13px] font-medium text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900"
+                >
+                  Sign in
+                </Link>
+              }
+            />
+          </Page>
+        </SidebarLayout>
       </Unauthenticated>
 
       <Authenticated>
         <StatisticsContent />
       </Authenticated>
     </>
-  )
+  );
 }
 
 function StatisticsContent() {
-  const stats = useQuery(api.stats.getMyStatistics, { weeks: 12 })
-
-  return <StatisticsBody stats={stats as any} isLoading={stats === undefined} />
+  const stats = useQuery(api.stats.getMyStatistics, { weeks: 12 });
+  return <StatisticsBody stats={stats as any} />;
 }
 
-function StatisticsBody({ stats, isLoading }: { stats: any | undefined; isLoading: boolean }) {
-  const [isMounted, setIsMounted] = useState(false)
-  const { ref: sankeyContainerRef, size: sankeySize } = useElementSize<HTMLDivElement>()
+function StatisticsBody({ stats }: { stats: any | undefined }) {
+  const [mounted, setMounted] = useState(false);
+  const [isDark, setIsDark] = useState(false);
+  const { ref: flowRef, width: flowWidth } = useElementWidth<HTMLDivElement>();
 
   useEffect(() => {
-    setIsMounted(true)
-  }, [])
+    setMounted(true);
+    const root = document.documentElement;
+    const sync = () => setIsDark(root.classList.contains("dark"));
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
 
   const jobCounts = stats?.jobCounts ?? {
     total: 0,
@@ -195,428 +180,327 @@ function StatisticsBody({ stats, isLoading }: { stats: any | undefined; isLoadin
     interview: 0,
     accepted: 0,
     ghosted: 0,
-  }
+  };
+  const rates = stats?.jobRates ?? {
+    appliedRate: 0,
+    interviewRate: 0,
+    acceptanceRate: 0,
+    ghostRate: 0,
+  };
+  const docCounts = stats?.docCounts ?? {
+    total: 0,
+    resumes: 0,
+    coverLetters: 0,
+  };
 
-  const appliedOrBeyond =
-    jobCounts.applied + jobCounts.interview + jobCounts.accepted + jobCounts.ghosted
-  const interviewOrBeyond = jobCounts.interview + jobCounts.accepted
-  // NOTE: Job statuses are mutually exclusive; this Sankey is a conceptual funnel:
-  // Tracked -> Applied (all non-viewed) -> Interview (interview + accepted), with leaks to Ghosted.
-  const appliedPending = jobCounts.applied
-  const interviewPending = jobCounts.interview
+  const applied =
+    jobCounts.applied +
+    jobCounts.interview +
+    jobCounts.accepted +
+    jobCounts.ghosted;
+  const interviewed = jobCounts.interview + jobCounts.accepted;
 
-  const pipelineNodes = [
-    { id: 'tracked', name: 'Tracked', color: '#14b8a6' },
-    { id: 'viewed', name: 'Viewed', color: '#06b6d4' },
-    { id: 'applied', name: 'Applied', color: '#3b82f6' },
-    { id: 'still_applied', name: 'Still Applied', color: '#a855f7' },
-    { id: 'interview', name: 'Interview', color: '#f59e0b' },
-    { id: 'in_interview', name: 'In Interview', color: '#ec4899' },
-    { id: 'accepted', name: 'Accepted', color: '#10b981' },
-    { id: 'ghosted', name: 'Ghosted', color: '#f43f5e' },
-  ]
+  const trend = (stats?.jobTrend ?? []).map((bucket: any, index: number) => ({
+    label: bucket.label,
+    added: bucket.added,
+    documents:
+      (stats?.documentTrend?.[index]?.resumes ?? 0) +
+      (stats?.documentTrend?.[index]?.coverLetters ?? 0),
+  }));
+  const hasTrend = trend.some(
+    (bucket: any) => bucket.added > 0 || bucket.documents > 0,
+  );
 
-  const pipelineLinks = [
-    { source: 'tracked', target: 'viewed', value: jobCounts.viewed },
-    { source: 'tracked', target: 'applied', value: appliedOrBeyond },
-    { source: 'applied', target: 'still_applied', value: appliedPending },
-    { source: 'applied', target: 'interview', value: interviewOrBeyond },
-    { source: 'applied', target: 'ghosted', value: jobCounts.ghosted },
-    { source: 'interview', target: 'in_interview', value: interviewPending },
-    { source: 'interview', target: 'accepted', value: jobCounts.accepted },
-  ].filter((link) => Number.isFinite(link.value) && link.value > 0)
+  // Statuses are exclusive, so the bands show how the tracked set divides
+  // rather than movement recorded over time.
+  const ramp = isDark ? SANKEY_DARK : SANKEY_LIGHT;
+  const flowNodes = [
+    { id: "tracked", name: "Tracked", color: ramp[0] },
+    { id: "viewed", name: "Not applied", color: ramp[2] },
+    { id: "applied", name: "Applied", color: ramp[1] },
+    { id: "open", name: "Awaiting reply", color: ramp[2] },
+    { id: "interview", name: "Interviewed", color: ramp[1] },
+    { id: "ghosted", name: "Ghosted", color: ramp[3] },
+    { id: "talking", name: "In process", color: ramp[2] },
+    { id: "accepted", name: "Offer", color: ramp[0] },
+  ];
+  const flowLinks = [
+    { source: "tracked", target: "viewed", value: jobCounts.viewed },
+    { source: "tracked", target: "applied", value: applied },
+    { source: "applied", target: "open", value: jobCounts.applied },
+    { source: "applied", target: "interview", value: interviewed },
+    { source: "applied", target: "ghosted", value: jobCounts.ghosted },
+    { source: "interview", target: "talking", value: jobCounts.interview },
+    { source: "interview", target: "accepted", value: jobCounts.accepted },
+  ].filter((link) => Number.isFinite(link.value) && link.value > 0);
+  const flowColumns = [
+    ["tracked"],
+    ["viewed", "applied"],
+    ["open", "interview", "ghosted"],
+    ["talking", "accepted"],
+  ];
 
-  const pipelineColumns = [
-    ['tracked'],
-    ['viewed', 'applied'],
-    ['still_applied', 'interview', 'ghosted'],
-    ['in_interview', 'accepted'],
-  ]
-
-  const statusCards = [
-    {
-      label: 'Views',
-      value: jobCounts.viewed,
-      description: 'New listings tracked',
-      color: 'from-slate-100 via-slate-50 to-white',
-      icon: 'visibility',
-    },
-    {
-      label: 'Applies',
-      value: jobCounts.applied,
-      description: 'Submitted applications',
-      color: 'from-blue-100 via-blue-50 to-white',
-      icon: 'send',
-    },
-    {
-      label: 'Interviews',
-      value: jobCounts.interview,
-      description: 'Active conversations',
-      color: 'from-amber-100 via-amber-50 to-white',
-      icon: 'forum',
-    },
-    {
-      label: 'Accepted',
-      value: jobCounts.accepted,
-      description: 'Offer wins',
-      color: 'from-emerald-100 via-emerald-50 to-white',
-      icon: 'check_circle',
-    },
-    {
-      label: 'Ghosted',
-      value: jobCounts.ghosted,
-      description: 'No response yet',
-      color: 'from-rose-100 via-rose-50 to-white',
-      icon: 'visibility_off',
-    },
-  ]
-
-  const distributionData = [
-    { name: 'Viewed', value: jobCounts.viewed, color: STATUS_COLORS.viewed },
-    { name: 'Applied', value: jobCounts.applied, color: STATUS_COLORS.applied },
-    { name: 'Interview', value: jobCounts.interview, color: STATUS_COLORS.interview },
-    { name: 'Accepted', value: jobCounts.accepted, color: STATUS_COLORS.accepted },
-    { name: 'Ghosted', value: jobCounts.ghosted, color: STATUS_COLORS.ghosted },
-  ].filter((entry) => entry.value > 0)
-
-  const insightCards = [
-    {
-      label: 'Apply Rate',
-      value: stats ? `${Math.round(stats.jobRates.appliedRate * 100)}%` : '--',
-      detail: 'Applied from tracked jobs',
-      icon: 'north_east',
-    },
-    {
-      label: 'Interview Rate',
-      value: stats ? `${Math.round(stats.jobRates.interviewRate * 100)}%` : '--',
-      detail: 'Interviews per application',
-      icon: 'mic',
-    },
-    {
-      label: 'Acceptance Rate',
-      value: stats ? `${Math.round(stats.jobRates.acceptanceRate * 100)}%` : '--',
-      detail: 'Offers per interview',
-      icon: 'verified',
-    },
-    {
-      label: 'Ghost Rate',
-      value: stats ? `${Math.round(stats.jobRates.ghostRate * 100)}%` : '--',
-      detail: 'Ghosted per application',
-      icon: 'cloud_off',
-    },
-  ]
-
-  const documentCards = [
-    {
-      label: 'Documents',
-      value: stats?.docCounts.total ?? 0,
-      detail: 'Total generated',
-      icon: 'folder_open',
-    },
-    {
-      label: 'Resumes',
-      value: stats?.docCounts.resumes ?? 0,
-      detail: 'Tailored resumes',
-      icon: 'description',
-    },
-    {
-      label: 'Cover Letters',
-      value: stats?.docCounts.coverLetters ?? 0,
-      detail: 'Sent introductions',
-      icon: 'mail',
-    },
-    {
-      label: 'Stale Apps',
-      value: stats?.staleJobs ?? 0,
-      detail: '14+ days without updates',
-      icon: 'schedule',
-    },
-  ]
+  const hasAnything = jobCounts.total > 0 || docCounts.total > 0;
 
   return (
     <SidebarLayout>
-      <div className="mx-auto w-full max-w-6xl space-y-10">
-        <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Statistics</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              A visual snapshot of your job search momentum over the last 12 weeks.
-            </p>
-          </div>
-          <div className="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-            <span className="material-icons-outlined text-sm">calendar_today</span>
-            Last 12 weeks
-          </div>
-        </header>
+      <Page>
+        <PageHeader
+          title="Statistics"
+          description="Where your applications stand, and what you have been producing, over the last twelve weeks."
+          actions={
+            <Link
+              to="/job-applications"
+              className="rounded-md border border-slate-200 px-3 py-2 text-[13px] text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900"
+            >
+              Applications
+            </Link>
+          }
+        />
 
-        <Card className="border-slate-200 bg-gradient-to-br from-slate-50 via-white to-slate-100/60 dark:border-slate-700 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg">Pipeline Flow</CardTitle>
-                <CardDescription>Track how listings move through your funnel.</CardDescription>
-              </div>
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-                <span className="material-icons-outlined text-sm text-primary">safety_check</span>
-                {jobCounts.total} tracked roles
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {!isMounted || isLoading ? (
-              <div className="flex h-72 items-center justify-center text-sm text-slate-500">Loading chart...</div>
-            ) : jobCounts.total === 0 || pipelineLinks.length === 0 ? (
-              <div className="flex h-72 flex-col items-center justify-center gap-3 text-center text-sm text-slate-500">
-                <span className="material-icons-outlined text-3xl text-slate-300">insights</span>
-                Track more activity to unlock the pipeline flow.
-              </div>
-            ) : (
-              <div ref={sankeyContainerRef} className="h-80">
-                {sankeySize.width > 0 && sankeySize.height > 0 ? (
+        {!hasAnything ? (
+          <Panel>
+            <EmptyState
+              title="Nothing to measure yet"
+              description="Track a job from the extension or generate a document, and this page fills in."
+              action={
+                <Link
+                  to="/generate"
+                  className="rounded-md bg-slate-900 px-3 py-2 text-[13px] font-medium text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900"
+                >
+                  Generate a document
+                </Link>
+              }
+            />
+          </Panel>
+        ) : (
+          <div className="space-y-4">
+            {/* Headline figures: the four numbers worth knowing, with the
+                conversion they imply sitting underneath. */}
+            <Panel className="grid grid-cols-2 gap-6 p-5 sm:grid-cols-4">
+              <Stat
+                label="Jobs tracked"
+                value={jobCounts.total}
+                hint={
+                  stats?.staleJobs
+                    ? `${stats.staleJobs} untouched for 14 days`
+                    : undefined
+                }
+              />
+              <Stat
+                label="Applied"
+                value={applied}
+                hint={`${percent(rates.appliedRate)} of tracked`}
+              />
+              <Stat
+                label="Interviews"
+                value={interviewed}
+                hint={`${percent(rates.interviewRate)} of applications`}
+              />
+              <Stat
+                label="Offers"
+                value={jobCounts.accepted}
+                hint={`${percent(rates.acceptanceRate)} of interviews`}
+              />
+            </Panel>
+
+            <Panel>
+              <PanelHeader
+                title="Pipeline"
+                meta={`Where ${jobCounts.total} tracked ${jobCounts.total === 1 ? "job" : "jobs"} stand now`}
+              />
+              <div ref={flowRef} className="p-4">
+                {mounted && flowWidth > 0 && flowLinks.length > 0 ? (
                   <PipelineSankey
-                    width={sankeySize.width}
-                    height={sankeySize.height}
-                    nodes={pipelineNodes}
-                    links={pipelineLinks}
-                    nodeColumns={pipelineColumns}
+                    width={flowWidth}
+                    height={300}
+                    nodes={flowNodes}
+                    links={flowLinks}
+                    nodeColumns={flowColumns}
                   />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-sm text-slate-500">Measuring chart...</div>
+                  <p className="py-12 text-center text-sm text-slate-400 dark:text-slate-500">
+                    Track a few jobs to see the split.
+                  </p>
                 )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          {statusCards.map((card) => (
-            <div
-              key={card.label}
-              className={cn(
-                'relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-800',
-              )}
-            >
-              <div
-                className={cn(
-                  'pointer-events-none absolute inset-x-0 top-0 h-20 opacity-60',
-                  `bg-gradient-to-br ${card.color}`,
+                {jobCounts.ghosted > 0 && (
+                  <p className="flex items-center gap-2 border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                    <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                    {jobCounts.ghosted} ghosted — {percent(rates.ghostRate)} of
+                    applications
+                  </p>
                 )}
-              />
-              <div className="relative flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    {card.label}
-                  </p>
-                  <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
-                    {stats ? card.value : '--'}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">{card.description}</p>
-                </div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-slate-500 shadow-sm dark:bg-slate-900">
-                  <span className="material-icons-outlined text-lg">{card.icon}</span>
-                </div>
               </div>
+            </Panel>
+
+            <div className="grid gap-4">
+              <Panel>
+                <PanelHeader title="Activity" meta="Per week" />
+                <div className="p-5 pt-4">
+                  {!hasTrend ? (
+                    <p className="py-8 text-center text-sm text-slate-400 dark:text-slate-500">
+                      No activity in this window yet.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-4 pb-3">
+                        <LegendKey label="Jobs added" />
+                        <LegendKey label="Documents" dashed />
+                      </div>
+                      <div className="h-[180px] w-full">
+                        {mounted && (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart
+                              data={trend}
+                              margin={{ top: 4, right: 8, bottom: 0, left: -24 }}
+                            >
+                              <CartesianGrid
+                                vertical={false}
+                                stroke="currentColor"
+                                className="text-slate-200 dark:text-slate-800"
+                              />
+                              <XAxis
+                                dataKey="label"
+                                tickLine={false}
+                                axisLine={false}
+                                tick={{ fontSize: 11, fill: "currentColor" }}
+                                className="text-slate-400"
+                                interval="preserveStartEnd"
+                              />
+                              <YAxis
+                                allowDecimals={false}
+                                tickLine={false}
+                                axisLine={false}
+                                width={40}
+                                tick={{ fontSize: 11, fill: "currentColor" }}
+                                className="text-slate-400"
+                              />
+                              <Tooltip
+                                cursor={{
+                                  stroke: "#94a3b8",
+                                  strokeDasharray: "3 3",
+                                }}
+                                contentStyle={{
+                                  borderRadius: 8,
+                                  border: "1px solid hsl(var(--border))",
+                                  background: "hsl(var(--popover))",
+                                  color: "hsl(var(--popover-foreground))",
+                                  fontSize: 12,
+                                  boxShadow: "none",
+                                }}
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="added"
+                                name="Jobs added"
+                                stroke="hsl(var(--foreground))"
+                                strokeWidth={2}
+                                dot={false}
+                                activeDot={{ r: 4 }}
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="documents"
+                                name="Documents"
+                                stroke="hsl(var(--muted-foreground))"
+                                strokeWidth={2}
+                                strokeDasharray="4 3"
+                                dot={false}
+                                activeDot={{ r: 4 }}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </Panel>
             </div>
-          ))}
-        </section>
 
-        <section className="grid gap-6 lg:grid-cols-3">
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Weekly Activity</CardTitle>
-              <CardDescription>Applications added and their current status.</CardDescription>
-            </CardHeader>
-            <CardContent className="h-80">
-              {!isMounted || stats === undefined ? (
-                <div className="flex h-full items-center justify-center text-sm text-slate-500">
-                  Loading activity...
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={stats.jobTrend} barGap={4} margin={{ left: 4, right: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
-                    <XAxis dataKey="label" fontSize={11} tickLine={false} />
-                    <YAxis fontSize={11} tickLine={false} />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="viewed" stackId="a" fill={STATUS_COLORS.viewed} radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="applied" stackId="a" fill={STATUS_COLORS.applied} />
-                    <Bar dataKey="interview" stackId="a" fill={STATUS_COLORS.interview} />
-                    <Bar dataKey="accepted" stackId="a" fill={STATUS_COLORS.accepted} />
-                    <Bar dataKey="ghosted" stackId="a" fill={STATUS_COLORS.ghosted} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <RankedPanel
+                title="Templates"
+                entries={stats?.docTop?.templates ?? []}
+                format={(key: string) =>
+                  key.startsWith("custom:")
+                    ? "Custom template"
+                    : titleCase(key.replace(/_/g, " "))
+                }
+              />
+              <RankedPanel title="Tones" entries={stats?.docTop?.tones ?? []} />
+            </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Status Mix</CardTitle>
-              <CardDescription>Where your current pipeline stands.</CardDescription>
-            </CardHeader>
-            <CardContent className="h-80">
-              {!isMounted || stats === undefined ? (
-                <div className="flex h-full items-center justify-center text-sm text-slate-500">
-                  Loading breakdown...
-                </div>
-              ) : distributionData.length === 0 ? (
-                <div className="flex h-full items-center justify-center text-sm text-slate-500">
-                  No data yet.
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={distributionData}
-                      dataKey="value"
-                      nameKey="name"
-                      innerRadius={50}
-                      outerRadius={90}
-                      paddingAngle={3}
-                    >
-                      {distributionData.map((entry) => (
-                        <Cell key={entry.name} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* Documents & Momentum (condensed, no stretched/empty cards) */}
-        <section className="grid auto-rows-min items-start gap-6 lg:grid-cols-3">
-          <Card className="self-start lg:col-span-2">
-            <CardHeader>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <CardTitle>Document Output</CardTitle>
-                  <CardDescription>Resumes and cover letters delivered each week.</CardDescription>
-                </div>
-                <div className="flex items-center gap-3 text-xs font-semibold text-slate-500">
-                  <span className="inline-flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-indigo-400" />
-                    Resumes
-                  </span>
-                  <span className="inline-flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-sky-400" />
-                    Cover letters
-                  </span>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="h-56">
-              {!isMounted || stats === undefined ? (
-                <div className="flex h-full items-center justify-center text-sm text-slate-500">
-                  Loading documents...
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={stats.documentTrend} margin={{ left: 4, right: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
-                    <XAxis dataKey="label" fontSize={11} tickLine={false} />
-                    <YAxis fontSize={11} tickLine={false} />
-                    <Tooltip />
-                    <Area type="monotone" dataKey="resumes" stroke="#6366f1" strokeWidth={2} fill="#c7d2fe" />
-                    <Area type="monotone" dataKey="coverLetters" stroke="#0ea5e9" strokeWidth={2} fill="#bae6fd" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="self-start bg-gradient-to-br from-slate-900 to-slate-800 text-white">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-white">Focus Metrics</CardTitle>
-              <CardDescription className="text-slate-200">Quick pulse checks for momentum.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-2">
-              {insightCards.map((card) => (
-                <div key={card.label} className="rounded-lg bg-white/10 px-3 py-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-200">
-                        {card.label}
-                      </p>
-                      <p className="text-lg font-semibold text-white">{card.value}</p>
-                      <p className="text-[11px] text-slate-300">{card.detail}</p>
-                    </div>
-                    <span className="material-icons-outlined mt-0.5 text-lg text-slate-100">{card.icon}</span>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card className="self-start">
-            <CardHeader>
-              <CardTitle>Document Mix</CardTitle>
-              <CardDescription>What you generated recently.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {documentCards.map((card) => (
-                <div key={card.label} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="material-icons-outlined text-slate-400">{card.icon}</span>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-white">{card.label}</p>
-                      <p className="text-xs text-slate-500">{card.detail}</p>
-                    </div>
-                  </div>
-                  <span className="text-lg font-bold text-slate-900 dark:text-white">{stats ? card.value : '--'}</span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card className="self-start">
-            <CardHeader>
-              <CardTitle>Top Templates</CardTitle>
-              <CardDescription>Most used designs.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {(stats?.docTop.templates ?? []).length === 0 ? (
-                <p className="text-sm text-slate-500">No template activity yet.</p>
-              ) : (
-                (stats?.docTop.templates ?? []).slice(0, 4).map((item, index) => (
-                  <div key={item.key} className="flex items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="text-xs font-bold text-slate-400">#{index + 1}</span>
-                      <p className="min-w-0 truncate text-sm font-semibold text-slate-900 dark:text-white">{item.key}</p>
-                    </div>
-                    <span className="shrink-0 text-sm font-semibold text-slate-500">{item.count}</span>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="self-start">
-            <CardHeader>
-              <CardTitle>Top Tones</CardTitle>
-              <CardDescription>Most common styles.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {(stats?.docTop.tones ?? []).length === 0 ? (
-                <p className="text-sm text-slate-500">No tone data yet.</p>
-              ) : (
-                (stats?.docTop.tones ?? []).slice(0, 4).map((item, index) => (
-                  <div key={item.key} className="flex items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="text-xs font-bold text-slate-400">#{index + 1}</span>
-                      <p className="min-w-0 truncate text-sm font-semibold text-slate-900 dark:text-white">{item.key}</p>
-                    </div>
-                    <span className="shrink-0 text-sm font-semibold text-slate-500">{item.count}</span>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        </section>
-      </div>
+            <Panel className="flex flex-wrap items-center gap-x-10 gap-y-5 p-5">
+              <Stat label="Documents made" value={docCounts.total} />
+              <Stat label="Resumes" value={docCounts.resumes} />
+              <Stat label="Cover letters" value={docCounts.coverLetters} />
+            </Panel>
+          </div>
+        )}
+      </Page>
     </SidebarLayout>
-  )
+  );
+}
+
+function LegendKey({ label, dashed }: { label: string; dashed?: boolean }) {
+  return (
+    <span className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+      <span
+        aria-hidden
+        className={cn(
+          "h-0 w-4 border-t-2",
+          dashed
+            ? "border-dashed border-slate-400"
+            : "border-solid border-slate-900 dark:border-slate-100",
+        )}
+      />
+      {label}
+    </span>
+  );
+}
+
+/** A short ranked list. Bars sit behind the text so the row stays one line. */
+function RankedPanel({
+  title,
+  entries,
+  format = (key: string) => key,
+}: {
+  title: string;
+  entries: Array<{ key: string; count: number }>;
+  format?: (key: string) => string;
+}) {
+  const max = Math.max(...entries.map((entry) => entry.count), 1);
+
+  return (
+    <Panel>
+      <PanelHeader title={title} />
+      {entries.length === 0 ? (
+        <p className="px-4 py-6 text-center text-xs text-slate-400 dark:text-slate-500">
+          Nothing generated yet.
+        </p>
+      ) : (
+        <ul className="p-2">
+          {entries.map((entry) => (
+            <li key={entry.key} className="relative">
+              <div
+                aria-hidden
+                className="absolute inset-y-0 left-0 rounded-[3px] bg-slate-100 dark:bg-slate-800/70"
+                style={{ width: `${(entry.count / max) * 100}%` }}
+              />
+              <div className="relative flex items-center justify-between gap-3 px-2 py-1.5">
+                <span className="truncate text-[13px] text-slate-700 dark:text-slate-200">
+                  {format(entry.key)}
+                </span>
+                <span className="shrink-0 text-[13px] tabular-nums text-slate-500 dark:text-slate-400">
+                  {entry.count}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  );
 }

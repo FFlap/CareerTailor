@@ -136,7 +136,6 @@ export const getMyStatistics = query({
 
     const templateCounts = new Map<string, number>()
     const toneCounts = new Map<string, number>()
-    const modelCounts = new Map<string, number>()
 
     for (const doc of documents) {
       if (doc.type === 'resume') {
@@ -147,7 +146,6 @@ export const getMyStatistics = query({
 
       templateCounts.set(doc.templateId, (templateCounts.get(doc.templateId) ?? 0) + 1)
       toneCounts.set(doc.tone, (toneCounts.get(doc.tone) ?? 0) + 1)
-      modelCounts.set(doc.llmModel, (modelCounts.get(doc.llmModel) ?? 0) + 1)
 
       const createdAt = doc.createdAt
       if (createdAt >= startAt) {
@@ -183,7 +181,6 @@ export const getMyStatistics = query({
       docTop: {
         templates: toTopEntries(templateCounts, 4),
         tones: toTopEntries(toneCounts, 4),
-        models: toTopEntries(modelCounts, 4),
       },
     }
   },

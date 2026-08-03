@@ -36,16 +36,9 @@ export const Route = createRootRoute({
         crossOrigin: 'anonymous',
       },
       {
+        // Public Sans for the interface, Archivo for headings, mono for code.
         rel: 'stylesheet',
-        href: 'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap',
-      },
-      {
-        rel: 'stylesheet',
-        href: 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap',
-      },
-      {
-        rel: 'stylesheet',
-        href: 'https://fonts.googleapis.com/icon?family=Material+Icons+Outlined',
+        href: 'https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&family=Archivo:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap',
       },
       {
         rel: 'stylesheet',
@@ -62,17 +55,20 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
+  // Routes that bring their own chrome; the shared bar is for the rest.
+  const OWN_CHROME = [
+    '/editor/',
+    '/dashboard',
+    '/generate',
+    '/job-applications',
+    '/statistics',
+    '/gallery',
+    '/roast',
+    '/templates',
+    '/profile',
+  ]
   const hideHeader =
-    pathname.startsWith('/editor/') ||
-    pathname === '/' ||
-    pathname.startsWith('/dashboard') ||
-    pathname.startsWith('/generate') ||
-    pathname.startsWith('/job-applications') ||
-    pathname.startsWith('/statistics') ||
-    pathname.startsWith('/gallery') ||
-    pathname.startsWith('/roast') ||
-    pathname.startsWith('/templates') ||
-    pathname.startsWith('/onboarding')
+    pathname === '/' || OWN_CHROME.some((prefix) => pathname.startsWith(prefix))
 
   return (
     <ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>

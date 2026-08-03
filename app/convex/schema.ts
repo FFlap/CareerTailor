@@ -82,7 +82,8 @@ export default defineSchema({
 
   documents: defineTable({
     userId: v.string(),
-    jobId: v.id("jobs"),
+    // Absent for a general document, written from the profile alone.
+    jobId: v.optional(v.id("jobs")),
     type: v.union(v.literal("resume"), v.literal("cover_letter")),
     templateId: v.string(),
     llmModel: v.string(),

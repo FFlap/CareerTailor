@@ -51,7 +51,9 @@ export const listMyRecentDocuments = query({
       .order("desc")
       .take(limit);
 
-    const jobs = await Promise.all(docs.map((doc) => ctx.db.get(doc.jobId)));
+    const jobs = await Promise.all(
+      docs.map((doc) => (doc.jobId ? ctx.db.get(doc.jobId) : null)),
+    );
     return docs.map((doc, idx) => {
       const job = jobs[idx];
       return {
@@ -122,7 +124,9 @@ export const updateMyDocumentData = mutation({
     }
 
     const job =
-      doc.type === "cover_letter" ? await ctx.db.get(doc.jobId) : null;
+      doc.type === "cover_letter" && doc.jobId
+        ? await ctx.db.get(doc.jobId)
+        : null;
     const safeJob = job && job.userId === userId ? job : null;
 
     let typstSource = doc.typstSource;
@@ -173,7 +177,7 @@ export const updateMyDocumentData = mutation({
 
 export const createGeneratedDocument = mutation({
   args: {
-    jobId: v.id("jobs"),
+    jobId: v.optional(v.id("jobs")),
     type: v.union(v.literal("resume"), v.literal("cover_letter")),
     templateId: v.string(),
     llmModel: v.string(),
@@ -187,9 +191,11 @@ export const createGeneratedDocument = mutation({
     if (args.typstSource.length > MAX_TYPST_SOURCE_LENGTH) {
       throw new Error("Typst source too large.");
     }
-    const job = await ctx.db.get(args.jobId);
-    if (!job || job.userId !== userId) {
-      throw new Error("Job not found.");
+    if (args.jobId) {
+      const job = await ctx.db.get(args.jobId);
+      if (!job || job.userId !== userId) {
+        throw new Error("Job not found.");
+      }
     }
     const now = Date.now();
     return await ctx.db.insert("documents", {

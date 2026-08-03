@@ -107,7 +107,7 @@ async function getValidAuthToken({ tryReconnect = false } = {}) {
 }
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.tabs.create({ url: `${APP_BASE_URL}/onboarding?from=extension` });
+  chrome.tabs.create({ url: `${APP_BASE_URL}/profile?from=extension` });
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {

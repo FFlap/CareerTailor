@@ -30,6 +30,7 @@ export function PaneTab({
   );
 }
 
+/** Quiet supporting text — counts, states, units. */
 export function Meta({
   children,
   className,
@@ -40,7 +41,7 @@ export function Meta({
   return (
     <span
       className={cn(
-        "font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500",
+        "text-[11px] font-medium tracking-wide text-slate-400 dark:text-slate-500",
         className,
       )}
     >
@@ -135,7 +136,7 @@ export function FieldRow({
       <label
         htmlFor={htmlFor}
         className={cn(
-          "font-mono text-[10px] uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500",
+          "text-[11px] font-medium text-slate-500 dark:text-slate-400",
           align === "center" ? "@lg/fields:self-center" : "@lg/fields:pt-2",
         )}
       >
