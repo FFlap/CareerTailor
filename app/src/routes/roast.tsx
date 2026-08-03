@@ -158,6 +158,14 @@ function RoastContent() {
       setPreviewMode('pdf')
       setPdfData(await file.arrayBuffer())
       const text = await extractTextFromPdf(file)
+      if (!text.trim()) {
+        setPreviewMode('pdf')
+        setError(
+          'No selectable text found — this looks like a scanned or image-only PDF. Export a text PDF and try again.',
+        )
+        setStatus('')
+        return
+      }
       setResumeText(text)
       setStatus('Resume loaded. Ready to roast.')
     } catch (err) {
@@ -284,7 +292,10 @@ function RoastContent() {
         setPdfRenderVersion((version) => version + 1)
       }
     }
-    void renderPdf()
+    renderPdf().catch((err) => {
+      if (cancelled) return
+      setError(err instanceof Error ? err.message : 'Failed to render the PDF preview.')
+    })
     return () => {
       cancelled = true
     }

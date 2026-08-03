@@ -35,8 +35,6 @@ export const DEFAULT_OPENROUTER_MODEL = OPENROUTER_MODELS[0].id
 export const DEFAULT_MODEL: string = DEFAULT_GEMINI_MODEL
 export const DEFAULT_MODEL_LABEL: string = GEMINI_MODELS[0].label
 
-export const IMAGE_MODEL: string = DEFAULT_GEMINI_MODEL
-
 export const modelIdValidator = v.union(
   v.literal('gemma-4-31b-it'),
   v.literal('arcee-ai/trinity-large-preview:free'),

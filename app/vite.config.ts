@@ -12,6 +12,20 @@ const config = defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  // Pre-bundle these so a late discovery (Clerk loads lazily at sign-in) never
+  // re-optimizes mid-session and 404s an already-loaded chunk's dynamic import.
+  optimizeDeps: {
+    include: [
+      'pdfjs-dist',
+      'pdfjs-dist/web/pdf_viewer',
+      'mammoth',
+      '@clerk/clerk-react',
+      '@clerk/clerk-react/internal',
+      '@clerk/shared/error',
+      '@clerk/shared/getEnvVariable',
+      '@clerk/shared/underscore',
+    ],
+  },
   plugins: [
     // Disable the devtools event bus (default port 42069) to avoid port conflicts in dev environments.
     devtools({ eventBusConfig: { enabled: false } }),

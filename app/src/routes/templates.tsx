@@ -76,9 +76,6 @@ function TemplatesContent() {
   const createTemplateFromSource = useMutation(
     api.customTemplates.createTemplateFromSource,
   )
-  const createTemplateFromImage = useAction(
-    api.customTemplates.createTemplateFromImage,
-  )
   const deleteTemplate = useMutation(api.customTemplates.deleteTemplate)
 
   const [selectedResume, setSelectedResume] = useState<ResumeSelection>(
@@ -91,11 +88,9 @@ function TemplatesContent() {
   const [coverStatus, setCoverStatus] = useState<string>('')
 
   const [createOpen, setCreateOpen] = useState(false)
-  const [createMode, setCreateMode] = useState<'typst' | 'image'>('typst')
   const [newTemplateName, setNewTemplateName] = useState('')
   const [newTemplateType, setNewTemplateType] = useState<'resume' | 'cover_letter'>('resume')
   const [newTypstSource, setNewTypstSource] = useState('')
-  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null)
   const [createStatus, setCreateStatus] = useState('')
   const [isCreating, setIsCreating] = useState(false)
 
@@ -235,8 +230,6 @@ function TemplatesContent() {
     setNewTemplateName('')
     setNewTemplateType('resume')
     setNewTypstSource('')
-    setImageDataUrl(null)
-    setCreateMode('typst')
     setCreateStatus('')
   }
 
@@ -250,31 +243,6 @@ function TemplatesContent() {
     reader.readAsText(file)
   }
 
-  function handleImageFile(file: File | null) {
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      const url = typeof reader.result === 'string' ? reader.result : ''
-      setImageDataUrl(url || null)
-    }
-    reader.readAsDataURL(file)
-  }
-
-  function handlePasteImage(event: ClipboardEvent<HTMLDivElement>) {
-    const items = event.clipboardData?.items
-    if (!items) return
-    for (const item of items) {
-      if (item.type.startsWith('image/')) {
-        const file = item.getAsFile()
-        if (file) {
-          event.preventDefault()
-          handleImageFile(file)
-        }
-        break
-      }
-    }
-  }
-
   async function handleCreateTemplate() {
     if (!isAuthenticated) {
       setCreateStatus('Sign in to create templates.')
@@ -285,31 +253,19 @@ function TemplatesContent() {
       return
     }
 
+    if (!newTypstSource.trim()) {
+      setCreateStatus('Paste or upload a Typst template.')
+      return
+    }
+
     setIsCreating(true)
     setCreateStatus('Saving template…')
     try {
-      if (createMode === 'typst') {
-        if (!newTypstSource.trim()) {
-          setCreateStatus('Paste or upload a Typst template.')
-          return
-        }
-        await createTemplateFromSource({
-          name: newTemplateName.trim(),
-          type: newTemplateType,
-          source: newTypstSource,
-          origin: 'typst',
-        })
-      } else {
-        if (!imageDataUrl) {
-          setCreateStatus('Paste or upload an image.')
-          return
-        }
-        await createTemplateFromImage({
-          name: newTemplateName.trim(),
-          type: newTemplateType,
-          imageDataUrl,
-        })
-      }
+      await createTemplateFromSource({
+        name: newTemplateName.trim(),
+        type: newTemplateType,
+        source: newTypstSource,
+      })
       setCreateStatus('Template saved.')
       resetCreateForm()
       setCreateOpen(false)
@@ -378,169 +334,139 @@ function TemplatesContent() {
         />
       </div>
 
-  {createOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-8 backdrop-blur-sm">
-            <div className="w-full max-w-3xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
-              <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Create a template</h3>
-                  <p className="text-xs text-slate-500">Upload Typst or generate from an image.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCreateOpen(false)
-                    resetCreateForm()
-                  }}
-                  className="rounded-full p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-                  aria-label="Close"
+      {createOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 py-8">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-template-title"
+            className="flex w-full max-w-xl flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-800 dark:bg-slate-900"
+          >
+            <div className="flex items-start justify-between border-b border-slate-200 px-5 py-3.5 dark:border-slate-800">
+              <div>
+                <h2
+                  id="create-template-title"
+                  className="font-display text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-50"
                 >
-                  <X className="h-4 w-4" />
-                </button>
+                  Add a template
+                </h2>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  Paste or upload Typst source. It stays editable afterwards.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setCreateOpen(false)
+                  resetCreateForm()
+                }}
+                aria-label="Close"
+                className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4 p-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="template-name"
+                    className="text-[11px] font-medium text-slate-500 dark:text-slate-400"
+                  >
+                    Name
+                  </label>
+                  <input
+                    id="template-name"
+                    value={newTemplateName}
+                    onChange={(event) => setNewTemplateName(event.target.value)}
+                    placeholder="Minimalist resume"
+                    className="h-9 w-full rounded-md border border-slate-200 bg-white px-2.5 text-[13px] text-slate-900 outline-none placeholder:text-slate-400 focus-visible:border-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-600"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="template-type"
+                    className="text-[11px] font-medium text-slate-500 dark:text-slate-400"
+                  >
+                    Type
+                  </label>
+                  <select
+                    id="template-type"
+                    value={newTemplateType}
+                    onChange={(event) =>
+                      setNewTemplateType(event.target.value as 'resume' | 'cover_letter')
+                    }
+                    className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-[13px] text-slate-900 outline-none focus-visible:border-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                  >
+                    <option value="resume">Resume</option>
+                    <option value="cover_letter">Cover letter</option>
+                  </select>
+                </div>
               </div>
 
-              <div className="grid gap-6 p-6 md:grid-cols-2">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Template name</label>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label
+                    htmlFor="template-source"
+                    className="text-[11px] font-medium text-slate-500 dark:text-slate-400"
+                  >
+                    Typst source
+                  </label>
+                  <label className="cursor-pointer rounded px-2 py-1 text-xs text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100">
+                    Upload a .typ file
                     <input
-                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950"
-                      value={newTemplateName}
-                      onChange={(event) => setNewTemplateName(event.target.value)}
-                      placeholder="e.g. Minimalist Resume"
+                      type="file"
+                      accept=".typ,.txt"
+                      className="sr-only"
+                      onChange={(event) => handleTypstFile(event.target.files?.[0] || null)}
                     />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Template type</label>
-                    <select
-                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950"
-                      value={newTemplateType}
-                      onChange={(event) =>
-                        setNewTemplateType(event.target.value as 'resume' | 'cover_letter')
-                      }
-                    >
-                      <option value="resume">Resume</option>
-                      <option value="cover_letter">Cover Letter</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">Source</label>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setCreateMode('typst')}
-                        className={`flex-1 rounded-lg border px-3 py-2 text-xs font-semibold uppercase tracking-wide ${
-                          createMode === 'typst'
-                            ? 'border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100'
-                            : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400'
-                        }`}
-                      >
-                        Typst file
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCreateMode('image')}
-                        className={`flex-1 rounded-lg border px-3 py-2 text-xs font-semibold uppercase tracking-wide ${
-                          createMode === 'image'
-                            ? 'border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100'
-                            : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400'
-                        }`}
-                      >
-                        Paste image
-                      </button>
-                    </div>
-                  </div>
-
-                  {createMode === 'typst' ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between text-xs text-slate-500">
-                        <span>Upload a .typ file</span>
-                        <label className="cursor-pointer text-indigo-600 hover:underline">
-                          Browse
-                          <input
-                            type="file"
-                            accept=".typ,.txt"
-                            className="hidden"
-                            onChange={(event) => handleTypstFile(event.target.files?.[0] || null)}
-                          />
-                        </label>
-                      </div>
-                      <textarea
-                        className="min-h-[180px] w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs leading-relaxed dark:border-slate-800 dark:bg-slate-950"
-                        value={newTypstSource}
-                        onChange={(event) => setNewTypstSource(event.target.value)}
-                        placeholder="Paste your Typst template here..."
-                      />
-                      <p className="text-[11px] text-slate-500">
-                        Tip: Custom templates can reference the `resume` or `cover_letter` data objects.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <div
-                        className="flex min-h-[180px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 text-center text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-950"
-                        onPaste={handlePasteImage}
-                        tabIndex={0}
-                      >
-                        {imageDataUrl ? (
-                          <img
-                            src={imageDataUrl}
-                            alt="Template preview"
-                            className="max-h-[200px] rounded-lg object-contain"
-                          />
-                        ) : (
-                          <>
-                            
-                            <p className="mt-2">Paste an image or upload a screenshot.</p>
-                          </>
-                        )}
-                      </div>
-                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                        Upload image
-                      </label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(event) => handleImageFile(event.target.files?.[0] || null)}
-                        className="block w-full text-xs text-slate-500 file:mr-3 file:rounded-md file:border-0 file:bg-slate-200 file:px-3 file:py-1 file:text-xs file:font-semibold file:text-slate-700 hover:file:bg-slate-300 dark:file:bg-slate-800 dark:file:text-slate-200"
-                      />
-                      <p className="text-[11px] text-slate-500">
-                        The model will generate a Typst layout from the image.
-                      </p>
-                    </div>
-                  )}
+                  </label>
                 </div>
-
-                <div className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                  <h4 className="text-sm font-semibold text-slate-900 dark:text-white">How custom templates work</h4>
-                  <ul className="space-y-2 text-xs leading-relaxed">
-                    <li>Use `resume` data for resumes and `cover_letter` + `sender` for cover letters.</li>
-                    <li>Templates should avoid local image assets for now.</li>
-                    <li>Generated templates are editable in the Typst editor after creation.</li>
-                  </ul>
-                  {createStatus && (
-                    <div className="rounded-lg bg-white px-3 py-2 text-xs text-slate-600 dark:bg-slate-900 dark:text-slate-300">
-                      {createStatus}
-                    </div>
-                  )}
-                  <div className="flex items-center gap-3">
-                    <Button variant="ghost" onClick={() => {
-                      setCreateOpen(false)
-                      resetCreateForm()
-                    }}>
-                      Cancel
-                    </Button>
-                    <Button onClick={handleCreateTemplate} disabled={isCreating}>
-                      {isCreating ? 'Saving…' : 'Save Template'}
-                    </Button>
-                  </div>
-                </div>
+                <textarea
+                  id="template-source"
+                  value={newTypstSource}
+                  onChange={(event) => setNewTypstSource(event.target.value)}
+                  placeholder="#set page(margin: 36pt)&#10;#resume.header.name"
+                  spellCheck={false}
+                  className="min-h-[12rem] w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 font-mono text-xs leading-relaxed text-slate-900 outline-none placeholder:text-slate-300 focus-visible:border-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-700"
+                />
+                <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                  Resumes read from <code>resume</code>; cover letters read from{' '}
+                  <code>cover_letter</code> and <code>sender</code>. Local image
+                  assets are not available to custom templates.
+                </p>
               </div>
+
+              {createStatus && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">{createStatus}</p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-5 py-3.5 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => {
+                  setCreateOpen(false)
+                  resetCreateForm()
+                }}
+                className="rounded-md px-3 py-2 text-[13px] text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateTemplate}
+                disabled={isCreating}
+                className="rounded-md bg-slate-900 px-3 py-2 text-[13px] font-medium text-white transition-colors hover:bg-slate-700 disabled:opacity-40 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+              >
+                {isCreating ? 'Saving…' : 'Save template'}
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
     </Page>
   )
 }
