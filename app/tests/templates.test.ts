@@ -7,6 +7,8 @@ import {
   buildCustomCoverLetterTypstSource,
   buildCustomResumeTypstSource,
   buildResumeTypstSource,
+  templatePrintsSection,
+  templateSections,
   type CoverTemplateId,
   type ResumeTemplateId,
 } from "../convex/lib/templates";
@@ -415,5 +417,349 @@ describe("custom (user-uploaded) templates", () => {
         job: JOB,
       }),
     ).not.toThrow();
+  });
+});
+
+describe("custom sections", () => {
+  const RESUME_WITH_CUSTOM = {
+    ...GENERATED_RESUME,
+    customSections: [
+      {
+        id: "certs",
+        title: "Certifications",
+        layout: "entries",
+        items: [
+          {
+            title: "AWS Solutions Architect",
+            subtitle: "Amazon Web Services",
+            location: "Remote",
+            startDate: "2023",
+            endDate: "2026",
+            description: "Professional level.",
+            bullets: ["Passed on the first attempt"],
+          },
+        ],
+      },
+      {
+        id: "languages",
+        title: "Languages",
+        layout: "inline",
+        items: [{ title: "English" }, { title: "Greek" }],
+      },
+      {
+        id: "awards",
+        title: "Awards",
+        layout: "bullets",
+        items: [{ title: "Hackathon winner, 2024" }],
+      },
+    ],
+  };
+
+  it.each(resumeTemplateIds)("renders every layout in %s", (templateId) => {
+    const source = buildResumeTypstSource({
+      templateId,
+      resume: RESUME_WITH_CUSTOM,
+      profile: PROFILE,
+    });
+
+    expect(source).toContain("Certifications");
+    expect(source).toContain("AWS Solutions Architect");
+    expect(source).toContain("Languages");
+    expect(source).toContain("English · Greek");
+    expect(source).toContain("Awards");
+    expect(source).toContain("- Hackathon winner, 2024");
+  });
+
+  it.each(resumeTemplateIds)(
+    "leaves out untitled and empty custom sections in %s",
+    (templateId) => {
+      const source = buildResumeTypstSource({
+        templateId,
+        resume: {
+          ...GENERATED_RESUME,
+          customSections: [
+            { id: "a", title: "", layout: "entries", items: [{ title: "x" }] },
+            { id: "b", title: "Empty", layout: "entries", items: [] },
+            { id: "c", title: "Blank", layout: "entries", items: [{}] },
+          ],
+        },
+        profile: PROFILE,
+      });
+
+      expect(source).not.toContain("Empty");
+      expect(source).not.toContain("Blank");
+    },
+  );
+
+  it.each(resumeTemplateIds)(
+    "escapes custom section content in %s",
+    (templateId) => {
+      const source = buildResumeTypstSource({
+        templateId,
+        resume: {
+          ...GENERATED_RESUME,
+          customSections: [
+            {
+              id: "hostile",
+              title: "Awards",
+              layout: "bullets",
+              items: [{ title: "Cut costs 50% #panic" }],
+            },
+          ],
+        },
+        profile: PROFILE,
+      });
+      expect(source).not.toContain("50% #panic");
+    },
+  );
+
+  it.each(resumeTemplateIds)(
+    "survives malformed custom section data in %s",
+    (templateId) => {
+      expect(() =>
+        buildResumeTypstSource({
+          templateId,
+          resume: { ...GENERATED_RESUME, customSections: "nope" },
+          profile: PROFILE,
+        }),
+      ).not.toThrow();
+
+      expect(() =>
+        buildResumeTypstSource({
+          templateId,
+          resume: {
+            ...GENERATED_RESUME,
+            customSections: [null, { items: null }, { title: 4, items: [1] }],
+          },
+          profile: PROFILE,
+        }),
+      ).not.toThrow();
+    },
+  );
+
+  it("exposes custom sections to custom templates", () => {
+    const source = buildCustomResumeTypstSource({
+      templateSource: "#resume.custom_sections",
+      resume: RESUME_WITH_CUSTOM,
+      profile: PROFILE,
+    });
+    expect(source).toContain("custom_sections:");
+    expect(source).toContain('title: "Certifications"');
+    expect(source).toContain('layout: "inline"');
+    expect(source).toContain("section_order:");
+  });
+});
+
+const SECTION_MARKERS: Record<ResumeTemplateId, Record<string, string>> = {
+  basic_resume: {
+    education: "== Education",
+    experience: "== Work Experience",
+    projects: "== Projects",
+    skills: "== Skills",
+  },
+  simple_technical_resume: {
+    education: '#custom-title("Education")',
+    experience: '#custom-title("Experience")',
+    projects: '#custom-title("Projects")',
+    skills: '#custom-title("Skills")',
+  },
+  modern_cv: {
+    experience: "= Professional Experience",
+    projects: "= Projects",
+    skills: "= Skills",
+    education: "= Education",
+  },
+  neat_cv: {
+    experience: "= Professional Experience",
+    projects: "= Projects",
+    education: "= Education",
+  },
+  metronic: {
+    experience: '"Professional Experience"',
+    projects: '"Projects"',
+  },
+  impressive_impression: {
+    experience: "== Experience",
+    projects: "== Projects",
+    education: "== Education",
+  },
+};
+
+describe("section order", () => {
+  const positionsOf = (source: string, markers: string[]) =>
+    markers.map((marker) => source.indexOf(marker));
+
+  it.each(resumeTemplateIds)(
+    "keeps the template order by default in %s",
+    (templateId) => {
+      const source = buildResumeTypstSource({
+        templateId,
+        resume: GENERATED_RESUME,
+        profile: PROFILE,
+      });
+      const [projects, experience] = positionsOf(source, [
+        SECTION_MARKERS[templateId].projects,
+        SECTION_MARKERS[templateId].experience,
+      ]);
+      expect(experience).toBeGreaterThan(-1);
+      expect(projects).toBeGreaterThan(experience);
+    },
+  );
+
+  it.each(resumeTemplateIds)(
+    "moves projects above experience in %s",
+    (templateId) => {
+      const source = buildResumeTypstSource({
+        templateId,
+        resume: {
+          ...GENERATED_RESUME,
+          sectionOrder: ["projects", "experience", "education", "skills"],
+        },
+        profile: PROFILE,
+      });
+      const [projects, experience] = positionsOf(source, [
+        SECTION_MARKERS[templateId].projects,
+        SECTION_MARKERS[templateId].experience,
+      ]);
+      expect(projects).toBeGreaterThan(-1);
+      expect(projects).toBeLessThan(experience);
+    },
+  );
+
+  it.each(resumeTemplateIds)(
+    "places a custom section where the order puts it in %s",
+    (templateId) => {
+      const source = buildResumeTypstSource({
+        templateId,
+        resume: {
+          ...GENERATED_RESUME,
+          customSections: [
+            {
+              id: "certs",
+              title: "Certifications",
+              layout: "bullets",
+              items: [{ title: "AWS Solutions Architect" }],
+            },
+          ],
+          sectionOrder: ["custom:certs", "experience", "projects", "education"],
+        },
+        profile: PROFILE,
+      });
+      expect(source.indexOf("Certifications")).toBeLessThan(
+        source.indexOf(SECTION_MARKERS[templateId].experience),
+      );
+    },
+  );
+
+  it.each(resumeTemplateIds)(
+    "ignores unknown keys in a stored order for %s",
+    (templateId) => {
+      const source = buildResumeTypstSource({
+        templateId,
+        resume: {
+          ...GENERATED_RESUME,
+          sectionOrder: ["custom:gone", "nonsense", "projects"],
+        },
+        profile: PROFILE,
+      });
+      expect(source).toContain(SECTION_MARKERS[templateId].experience);
+      expect(source).not.toContain("nonsense");
+    },
+  );
+});
+
+describe("what a template prints", () => {
+  const SENTINELS: Record<string, string> = {
+    summary: "SummarySentinel",
+    skills: "SkillSentinel",
+    experience: "ExperienceSentinel",
+    projects: "ProjectSentinel",
+    education: "EducationSentinel",
+  };
+
+  const MARKED_RESUME = {
+    ...GENERATED_RESUME,
+    summary: "SummarySentinel writes backend services.",
+    skills: [{ category: "Languages", items: ["SkillSentinel"] }],
+    experience: [
+      {
+        title: "Engineer",
+        company: "SkillSentinel".replace("Skill", "Experience"),
+        location: "London, UK",
+        startDate: "Mar 2021",
+        endDate: "Present",
+        bullets: ["Did the work"],
+      },
+    ],
+    projects: [
+      {
+        name: "ProjectSentinel",
+        technologies: ["Rust"],
+        link: "",
+        bullets: ["Shipped it"],
+      },
+    ],
+    education: [
+      {
+        degree: "BSc",
+        major: "Computer Science",
+        institution: "EducationSentinel",
+        location: "London, UK",
+        startDate: "Sep 2014",
+        endDate: "Jun 2018",
+      },
+    ],
+  };
+
+  it.each(resumeTemplateIds)(
+    "prints exactly the sections it claims to for %s",
+    (templateId) => {
+      const source = buildResumeTypstSource({
+        templateId,
+        resume: MARKED_RESUME,
+        profile: {},
+      });
+
+      for (const [key, sentinel] of Object.entries(SENTINELS)) {
+        expect(
+          source.includes(sentinel),
+          `${templateId} ${key}: expected printed=${templatePrintsSection(templateId, key)}`,
+        ).toBe(templatePrintsSection(templateId, key));
+      }
+    },
+  );
+
+  it.each(resumeTemplateIds)(
+    "prints its main flow in the order the editor lists for %s",
+    (templateId) => {
+      const source = buildResumeTypstSource({
+        templateId,
+        resume: MARKED_RESUME,
+        profile: {},
+      });
+
+      const positions = templateSections(templateId).ordered.map((key) =>
+        source.indexOf(SECTION_MARKERS[templateId][key]),
+      );
+      expect(positions.every((position) => position >= 0)).toBe(true);
+      expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+    },
+  );
+
+  it("hands a custom template every section", () => {
+    expect(templateSections("custom:abc123").ordered).toEqual([
+      "summary",
+      "skills",
+      "experience",
+      "projects",
+      "education",
+    ]);
+    expect(templatePrintsSection("custom:abc123", "summary")).toBe(true);
+  });
+
+  it("prints any custom section, whatever the template", () => {
+    for (const templateId of resumeTemplateIds) {
+      expect(templatePrintsSection(templateId, "custom:anything")).toBe(true);
+    }
   });
 });

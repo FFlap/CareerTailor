@@ -25,6 +25,7 @@ import {
 import {
   BARE_PROFILE,
   BARE_RESUME,
+  CUSTOM_SECTION_RESUME,
   GENERATED_COVER_LETTER,
   GENERATED_RESUME,
   HOSTILE_COVER_LETTER,
@@ -201,6 +202,19 @@ const CUSTOM_RESUME_TEMPLATE = `
   == #item.degree #item.major
   #item.institution #h(6pt) #item.location #h(6pt) #item.dates
 ]
+
+#for section in resume.custom_sections [
+  == #section.title
+  #if section.layout == "inline" [
+    #section.items.map(item => item.title).join(" · ")
+  ] else [
+    #for item in section.items [
+      *#item.title* #h(6pt) #item.subtitle #h(6pt) #item.dates \\
+      #item.description
+      #for bullet in item.bullets [ - #bullet ]
+    ]
+  ]
+]
 `;
 
 const CUSTOM_COVER_TEMPLATE = `
@@ -299,6 +313,19 @@ const RESUME_CASES: ResumeCase[] = [
     resume: {},
     profile: PROFILE,
     expected: ["Ada Lovelace", "ada@example.com"],
+  },
+  {
+    name: "custom-sections",
+    resume: CUSTOM_SECTION_RESUME,
+    profile: PROFILE,
+    expected: [
+      "Certifications",
+      "Certified Kubernetes Administrator",
+      "Speaking",
+      "GopherCon UK 2024",
+      "Languages",
+      "English \u00b7 French",
+    ],
   },
   { name: "null-payload", resume: null, profile: null },
 ];

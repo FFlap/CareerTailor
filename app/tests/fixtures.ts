@@ -175,6 +175,53 @@ export const GENERATED_RESUME = {
   education: PROFILE.education,
 };
 
+export const CUSTOM_SECTION_RESUME = {
+  ...GENERATED_RESUME,
+  customSections: [
+    {
+      id: "certifications",
+      title: "Certifications",
+      layout: "entries",
+      items: [
+        {
+          title: "Certified Kubernetes Administrator",
+          subtitle: "Cloud Native Computing Foundation",
+          location: "Remote",
+          startDate: "Mar 2023",
+          endDate: "Mar 2026",
+          description: "Cluster operations and troubleshooting.",
+          bullets: ["Scored in the top decile"],
+        },
+      ],
+    },
+    {
+      id: "speaking",
+      title: "Speaking",
+      layout: "bullets",
+      items: [
+        { title: "GopherCon UK 2024 - Ingestion at a million events a second" },
+        { title: "PyData London 2022 - Tiles all the way down" },
+      ],
+    },
+    {
+      id: "languages",
+      title: "Languages",
+      layout: "inline",
+      items: [{ title: "English" }, { title: "French" }],
+    },
+  ],
+  sectionOrder: [
+    "summary",
+    "custom:certifications",
+    "projects",
+    "experience",
+    "custom:speaking",
+    "education",
+    "skills",
+    "custom:languages",
+  ],
+};
+
 export const SPARSE_PROFILE = {
   personal: {
     fullName: "Jordan Reyes",

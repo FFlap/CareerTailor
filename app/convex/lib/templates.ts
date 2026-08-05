@@ -95,16 +95,71 @@ export const COVER_TEMPLATES: Record<
   },
 };
 
-const SUMMARY_TEMPLATES: string[] = [
-  "neat_cv",
-  "metronic",
-  "impressive_impression",
-];
+export const BUILT_IN_SECTION_KEYS = [
+  "summary",
+  "skills",
+  "experience",
+  "projects",
+  "education",
+] as const;
+
+export type TemplateSections = { fixed: string[]; ordered: string[] };
+
+const TEMPLATE_SECTIONS: Record<ResumeTemplateId, TemplateSections> = {
+  basic_resume: {
+    fixed: [],
+    ordered: ["education", "experience", "projects", "skills"],
+  },
+  simple_technical_resume: {
+    fixed: [],
+    ordered: ["education", "experience", "projects", "skills"],
+  },
+  modern_cv: {
+    fixed: [],
+    ordered: ["experience", "projects", "skills", "education"],
+  },
+  neat_cv: {
+    fixed: ["summary", "skills"],
+    ordered: ["experience", "projects", "education"],
+  },
+  metronic: {
+    fixed: ["summary", "education", "skills"],
+    ordered: ["experience", "projects"],
+  },
+  impressive_impression: {
+    fixed: ["summary", "skills"],
+    ordered: ["experience", "projects", "education"],
+  },
+};
+
+const CUSTOM_TEMPLATE_SECTIONS: TemplateSections = {
+  fixed: [],
+  ordered: [...BUILT_IN_SECTION_KEYS],
+};
+
+export function templateSections(
+  templateId: string | undefined,
+): TemplateSections {
+  if (!templateId) return CUSTOM_TEMPLATE_SECTIONS;
+  if (templateId.startsWith("custom:")) return CUSTOM_TEMPLATE_SECTIONS;
+  return (
+    TEMPLATE_SECTIONS[templateId as ResumeTemplateId] ??
+    CUSTOM_TEMPLATE_SECTIONS
+  );
+}
+
+export function templatePrintsSection(
+  templateId: string | undefined,
+  key: string,
+) {
+  if (key.startsWith("custom:")) return true;
+  const sections = templateSections(templateId);
+  return sections.fixed.includes(key) || sections.ordered.includes(key);
+}
 
 export function templateShowsSummary(templateId: string | undefined) {
   if (!templateId) return false;
-  if (templateId.startsWith("custom:")) return true;
-  return SUMMARY_TEMPLATES.includes(templateId);
+  return templatePrintsSection(templateId, "summary");
 }
 
 type TemplateLink = { label: string; url: string };
@@ -439,6 +494,130 @@ function sectionsOf(resume: any = {}) {
   };
 }
 
+export type CustomSectionLayout = "entries" | "bullets" | "inline";
+
+export type CustomSectionItem = {
+  title: string;
+  subtitle: string;
+  location: string;
+  startDate: string;
+  endDate: string;
+  description: string;
+  bullets: string[];
+};
+
+export type CustomSection = {
+  id: string;
+  title: string;
+  layout: CustomSectionLayout;
+  items: CustomSectionItem[];
+};
+
+export function customSectionKey(id: string) {
+  return `custom:${id}`;
+}
+
+export function normalizeCustomSections(resume: any): CustomSection[] {
+  const list = Array.isArray(resume?.customSections)
+    ? resume.customSections
+    : [];
+  return list
+    .map((section: any, index: number) => {
+      const layout: CustomSectionLayout =
+        section?.layout === "bullets" || section?.layout === "inline"
+          ? section.layout
+          : "entries";
+      const items: CustomSectionItem[] = (
+        Array.isArray(section?.items) ? section.items : []
+      )
+        .map((item: any) => ({
+          title: text(item?.title),
+          subtitle: text(item?.subtitle),
+          location: locationOf(item),
+          startDate: startDateOf(item),
+          endDate: endDateOf(item),
+          description: text(item?.description),
+          bullets: bulletsOf(item),
+        }))
+        .filter(
+          (item: CustomSectionItem) =>
+            item.title ||
+            item.subtitle ||
+            item.description ||
+            item.bullets.length,
+        );
+      return {
+        id: text(section?.id) || `section-${index + 1}`,
+        title: text(section?.title),
+        layout,
+        items,
+      };
+    })
+    .filter((section: CustomSection) => section.title && section.items.length);
+}
+
+export function resolveSectionOrder(
+  resume: any,
+  natural: readonly string[],
+  available: string[],
+) {
+  const stored = Array.isArray(resume?.sectionOrder)
+    ? resume.sectionOrder.map((key: unknown) => text(key))
+    : [];
+  const taken = new Set<string>();
+  const ordered: string[] = [];
+  for (const key of [...stored, ...natural, ...available]) {
+    if (!available.includes(key) || taken.has(key)) continue;
+    taken.add(key);
+    ordered.push(key);
+  }
+  return ordered;
+}
+
+function sectionFlow(
+  resume: any,
+  natural: readonly string[],
+  blocks: Record<string, Line[]>,
+) {
+  const available = Object.keys(blocks).filter((key) => blocks[key].length);
+  return resolveSectionOrder(resume, natural, available).flatMap(
+    (key) => blocks[key],
+  );
+}
+
+function customSectionBody(
+  section: CustomSection,
+  renderEntry: (item: CustomSectionItem) => string,
+) {
+  if (section.layout === "inline") {
+    const titles = section.items.map((item) => item.title).filter(Boolean);
+    return titles.length ? escapeTypst(titles.join(" · ")) : "";
+  }
+  if (section.layout === "bullets") {
+    return section.items
+      .map((item) => item.title)
+      .filter(Boolean)
+      .map((title) => `- ${escapeTypst(title)}`)
+      .join("\n");
+  }
+  return section.items.map(renderEntry).filter(Boolean).join("\n\n");
+}
+
+function customSectionBlocks(
+  resume: any,
+  heading: (title: string, body: string) => Line[],
+  renderEntry: (item: CustomSectionItem) => string,
+) {
+  const blocks: Record<string, Line[]> = {};
+  for (const section of normalizeCustomSections(resume)) {
+    const body = customSectionBody(section, renderEntry);
+    blocks[customSectionKey(section.id)] = body
+      ? heading(section.title, body)
+      : [];
+  }
+  return blocks;
+}
+
 function degreeOf(item: any) {
   return joinNonEmpty([item?.degree, item?.major], ", ");
 }
@@ -481,19 +660,19 @@ function buildBasicResumeSource(resume: any, profile: any) {
     )
     .join("\n\n");
 
-  const experienceBlocks = experience
-    .map((role: any) =>
-      lines([
-        "#work(",
-        optionalArg("title", role.title),
-        optionalArg("company", role.company),
-        optionalArg("location", locationOf(role)),
-        optionalArg("dates", dateRange(role, { openEnded: true })),
-        ")",
-        formatBullets(role) || false,
-      ]),
-    )
-    .join("\n\n");
+  const workBlock = (role: any) =>
+    lines([
+      "#work(",
+      optionalArg("title", role.title),
+      optionalArg("company", role.company),
+      optionalArg("location", locationOf(role)),
+      optionalArg("dates", dateRange(role, { openEnded: true })),
+      ")",
+      role.description ? escapeTypst(role.description) : false,
+      formatBullets(role) || false,
+    ]);
+
+  const experienceBlocks = experience.map(workBlock).join("\n\n");
 
   const projectBlocks = projects
     .map((project: any) =>
@@ -527,10 +706,22 @@ function buildBasicResumeSource(resume: any, profile: any) {
     '  paper: "us-letter"',
     ")",
     "",
-    ...when(educationBlocks, "== Education", educationBlocks, ""),
-    ...when(experienceBlocks, "== Work Experience", experienceBlocks, ""),
-    ...when(projectBlocks, "== Projects", projectBlocks, ""),
-    ...when(skills, "== Skills", skills),
+    ...sectionFlow(resume, TEMPLATE_SECTIONS.basic_resume.ordered, {
+      education: when(educationBlocks, "== Education", educationBlocks, ""),
+      experience: when(
+        experienceBlocks,
+        "== Work Experience",
+        experienceBlocks,
+        "",
+      ),
+      projects: when(projectBlocks, "== Projects", projectBlocks, ""),
+      skills: when(skills, "== Skills", skills, ""),
+      ...customSectionBlocks(
+        resume,
+        (title, body) => [`== ${escapeTypst(title)}`, body, ""],
+        (item) => workBlock({ ...item, company: item.subtitle }),
+      ),
+    }),
   ]);
 }
 
@@ -573,20 +764,20 @@ function buildSimpleTechnicalResumeSource(resume: any, profile: any) {
     )
     .join("\n\n");
 
-  const experienceBlocks = experience
-    .map((role: any) =>
-      lines([
-        "#entry-heading(",
-        `  ${typstString(role.title)},`,
-        `  ${typstString(role.company)},`,
-        `  ${typstString(dateRange(role, { openEnded: true }))},`,
-        `  ${typstString(locationOf(role))},`,
-        ")[",
-        formatBullets(role) || false,
-        "]",
-      ]),
-    )
-    .join("\n\n");
+  const entryHeading = (role: any) =>
+    lines([
+      "#entry-heading(",
+      `  ${typstString(role.title)},`,
+      `  ${typstString(role.company)},`,
+      `  ${typstString(dateRange(role, { openEnded: true }))},`,
+      `  ${typstString(locationOf(role))},`,
+      ")[",
+      role.description ? escapeTypst(role.description) : false,
+      formatBullets(role) || false,
+      "]",
+    ]);
+
+  const experienceBlocks = experience.map(entryHeading).join("\n\n");
 
   const projectBlocks = projects
     .map((project: any) => {
@@ -632,28 +823,48 @@ function buildSimpleTechnicalResumeSource(resume: any, profile: any) {
     optionalArg("github-username", github.handle),
     ")",
     "",
-    ...when(
-      educationBlocks,
-      '#custom-title("Education")[',
-      educationBlocks,
-      "]",
-      "",
-    ),
-    ...when(
-      experienceBlocks,
-      '#custom-title("Experience")[',
-      experienceBlocks,
-      "]",
-      "",
-    ),
-    ...when(
-      projectBlocks,
-      '#custom-title("Projects")[',
-      projectBlocks,
-      "]",
-      "",
-    ),
-    ...when(skills, '#custom-title("Skills")[', "#skills()[", skills, "]", "]"),
+    ...sectionFlow(resume, TEMPLATE_SECTIONS.simple_technical_resume.ordered, {
+      education: when(
+        educationBlocks,
+        '#custom-title("Education")[',
+        educationBlocks,
+        "]",
+        "",
+      ),
+      experience: when(
+        experienceBlocks,
+        '#custom-title("Experience")[',
+        experienceBlocks,
+        "]",
+        "",
+      ),
+      projects: when(
+        projectBlocks,
+        '#custom-title("Projects")[',
+        projectBlocks,
+        "]",
+        "",
+      ),
+      skills: when(
+        skills,
+        '#custom-title("Skills")[',
+        "#skills()[",
+        skills,
+        "]",
+        "]",
+        "",
+      ),
+      ...customSectionBlocks(
+        resume,
+        (title, body) => [
+          `#custom-title(${typstString(title)})[`,
+          body,
+          "]",
+          "",
+        ],
+        (item) => entryHeading({ ...item, company: item.subtitle }),
+      ),
+    }),
   ]);
 }
 
@@ -751,15 +962,36 @@ function buildModernCvResumeSource(resume: any, profile: any) {
     '  header-font: "New Computer Modern"',
     ")",
     "",
-    ...when(
-      experienceBlocks,
-      "= Professional Experience",
-      experienceBlocks,
-      "",
-    ),
-    ...when(projectBlocks, "= Projects", projectBlocks, ""),
-    ...when(skills, "= Skills", skills, ""),
-    ...when(educationBlocks, "= Education", educationBlocks),
+    ...sectionFlow(resume, TEMPLATE_SECTIONS.modern_cv.ordered, {
+      experience: when(
+        experienceBlocks,
+        "= Professional Experience",
+        experienceBlocks,
+        "",
+      ),
+      projects: when(projectBlocks, "= Projects", projectBlocks, ""),
+      skills: when(skills, "= Skills", skills, ""),
+      education: when(educationBlocks, "= Education", educationBlocks, ""),
+      ...customSectionBlocks(
+        resume,
+        (title, body) => [`= ${escapeTypst(title)}`, body, ""],
+        (item) =>
+          entry(
+            [
+              optionalArg("title", item.title),
+              optionalArg("location", item.location),
+              optionalArg("date", dateRange(item)),
+              optionalArg("description", item.subtitle || item.description),
+            ],
+            lines([
+              item.subtitle && item.description
+                ? escapeTypst(item.description)
+                : false,
+              formatBullets(item) || false,
+            ]),
+          ),
+      ),
+    }),
   ]);
 }
 
@@ -875,14 +1107,33 @@ function buildNeatCvResumeSource(resume: any, profile: any) {
     ),
     "]",
     "",
-    ...when(
-      experienceBlocks,
-      "= Professional Experience",
-      experienceBlocks,
-      "",
-    ),
-    ...when(projectBlocks, "= Projects", projectBlocks, ""),
-    ...when(educationBlocks, "= Education", educationBlocks),
+    ...sectionFlow(resume, TEMPLATE_SECTIONS.neat_cv.ordered, {
+      experience: when(
+        experienceBlocks,
+        "= Professional Experience",
+        experienceBlocks,
+        "",
+      ),
+      projects: when(projectBlocks, "= Projects", projectBlocks, ""),
+      education: when(educationBlocks, "= Education", educationBlocks, ""),
+      ...customSectionBlocks(
+        resume,
+        (title, body) => [`= ${escapeTypst(title)}`, body, ""],
+        (item) =>
+          entry(
+            [
+              optionalArg("title", item.title),
+              optionalArg("date", dateRange(item)),
+              optionalArg("institution", item.subtitle),
+              optionalArg("location", item.location),
+            ],
+            lines([
+              item.description ? escapeTypst(item.description) : false,
+              formatBullets(item) || false,
+            ]),
+          ),
+      ),
+    }),
   ]);
 }
 
@@ -988,19 +1239,44 @@ function buildMetronicResumeSource(resume: any, profile: any) {
     "  ]",
     ")",
     "",
-    ...when(
-      experienceBlocks,
-      '#section(icon: "briefcase", "Professional Experience")[',
-      indent(experienceBlocks, "  "),
-      "]",
-      "",
-    ),
-    ...when(
-      projectBlocks,
-      '#section(icon: "lightbulb", "Projects")[',
-      indent(projectBlocks, "  "),
-      "]",
-    ),
+    ...sectionFlow(resume, TEMPLATE_SECTIONS.metronic.ordered, {
+      experience: when(
+        experienceBlocks,
+        '#section(icon: "briefcase", "Professional Experience")[',
+        indent(experienceBlocks, "  "),
+        "]",
+        "",
+      ),
+      projects: when(
+        projectBlocks,
+        '#section(icon: "lightbulb", "Projects")[',
+        indent(projectBlocks, "  "),
+        "]",
+        "",
+      ),
+      ...customSectionBlocks(
+        resume,
+        (title, body) => [
+          `#section(icon: "star", ${typstString(title)})[`,
+          indent(body, "  "),
+          "]",
+          "",
+        ],
+        (item) => {
+          const subtitle = joinNonEmpty(
+            [item.subtitle, item.location, dateRange(item)],
+            " - ",
+          );
+          return lines([
+            `=== ${escapeTypst(item.title)}`,
+            ...when(subtitle, escapeTypst(subtitle)),
+            "",
+            ...when(item.description, escapeTypst(item.description), ""),
+            ...when(formatBullets(item), formatBullets(item)),
+          ]);
+        },
+      ),
+    }),
   ]);
 }
 
@@ -1149,14 +1425,44 @@ function buildImpressiveImpressionResumeSource(resume: any, profile: any) {
     "#let make-main-content-block-with-timeline = make-main-content-block-with-timeline.with(theme: theme)",
     "",
     "#let main-content = [",
-    ...when(
-      experienceBlocks,
-      "  == Experience",
-      indent(experienceBlocks, "  "),
-      "",
-    ),
-    ...when(projectBlocks, "  == Projects", indent(projectBlocks, "  "), ""),
-    ...when(educationBlocks, "  == Education", indent(educationBlocks, "  ")),
+    ...sectionFlow(resume, TEMPLATE_SECTIONS.impressive_impression.ordered, {
+      experience: when(
+        experienceBlocks,
+        "  == Experience",
+        indent(experienceBlocks, "  "),
+        "",
+      ),
+      projects: when(
+        projectBlocks,
+        "  == Projects",
+        indent(projectBlocks, "  "),
+        "",
+      ),
+      education: when(
+        educationBlocks,
+        "  == Education",
+        indent(educationBlocks, "  "),
+        "",
+      ),
+      ...customSectionBlocks(
+        resume,
+        (title, body) => [`  == ${escapeTypst(title)}`, indent(body, "  "), ""],
+        (item) =>
+          impressiveBlock({
+            title: item.title,
+            supplement: joinNonEmpty(
+              [escapeTypst(item.subtitle), escapeTypst(item.location)],
+              " · ",
+            ),
+            body: lines([
+              item.description ? escapeTypst(item.description) : false,
+              formatBullets(item) || false,
+            ]),
+            start: item.startDate,
+            end: item.endDate,
+          }),
+      ),
+    }),
     "]",
     "",
     "#let aside-content = [",
@@ -1454,6 +1760,42 @@ function buildResumeDataPreamble(resume: any, profile: any) {
     ),
   );
 
+  const customSections = normalizeCustomSections(safeResume);
+  const customTuple = typstExprTuple(
+    customSections.map((section) =>
+      typstDict({
+        id: typstString(section.id),
+        title: typstString(section.title),
+        layout: typstString(section.layout),
+        items: typstExprTuple(
+          section.items.map((item) =>
+            typstDict({
+              title: typstString(item.title),
+              subtitle: typstString(item.subtitle),
+              location: typstString(item.location),
+              start: typstString(item.startDate),
+              end: typstString(item.endDate),
+              dates: typstString(dateRange(item)),
+              description: typstString(item.description),
+              bullets: typstTuple(item.bullets),
+            }),
+          ),
+        ),
+      }),
+    ),
+  );
+
+  const orderTuple = typstTuple(
+    resolveSectionOrder(
+      safeResume,
+      [...BUILT_IN_SECTION_KEYS],
+      [
+        ...BUILT_IN_SECTION_KEYS,
+        ...customSections.map((section) => customSectionKey(section.id)),
+      ],
+    ),
+  );
+
   const headerDict = typstDict({
     name: typstString(header.name),
     email: typstString(header.email),
@@ -1470,6 +1812,8 @@ function buildResumeDataPreamble(resume: any, profile: any) {
     `  experience: ${experienceTuple},`,
     `  projects: ${projectsTuple},`,
     `  education: ${educationTuple},`,
+    `  custom_sections: ${customTuple},`,
+    `  section_order: ${orderTuple},`,
     ")",
     "",
   ].join("\n");
