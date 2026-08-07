@@ -105,7 +105,7 @@ function EditorContent() {
 
   const sourceOverridden = Boolean(doc?.sourceEditedAt);
 
-  const disclosure = useDisclosure(`editor:sections:${documentId}`);
+  const disclosure = useDisclosure();
 
   const disclosureKeys = useMemo(() => {
     if (!structuredData) return [];

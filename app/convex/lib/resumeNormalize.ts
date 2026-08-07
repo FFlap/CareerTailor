@@ -87,14 +87,38 @@ export function mergeGeneratedProjectsWithProfile(resume: any, profile: any) {
   }
 }
 
+export function carryProfileSections(resume: any, profile: any) {
+  const custom = Array.isArray(profile?.customSections)
+    ? profile.customSections
+    : []
+  const order = Array.isArray(profile?.sectionOrder) ? profile.sectionOrder : []
+  if (!custom.length && !order.length) return resume
+
+  const generatedCustom = Array.isArray(resume?.customSections)
+    ? resume.customSections
+    : []
+  const generatedOrder = Array.isArray(resume?.sectionOrder)
+    ? resume.sectionOrder
+    : []
+
+  return {
+    ...resume,
+    customSections: generatedCustom.length ? generatedCustom : custom,
+    sectionOrder: generatedOrder.length ? generatedOrder : order,
+  }
+}
+
 export function normalizeGeneratedResume(
   resume: any,
   profile: any,
   job: any,
   preferences?: Preferences,
 ) {
-  const merged = mergeGeneratedProjectsWithProfile(
-    removeUnsupportedTargetCompanyExperience(resume, profile, job),
+  const merged = carryProfileSections(
+    mergeGeneratedProjectsWithProfile(
+      removeUnsupportedTargetCompanyExperience(resume, profile, job),
+      profile,
+    ),
     profile,
   )
   return preferences ? enforceResumeLength(merged, preferences.targetLength) : merged

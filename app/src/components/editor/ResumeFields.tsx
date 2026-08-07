@@ -1,6 +1,7 @@
 import { Plus } from "lucide-react";
 import { useState, type ReactElement, type ReactNode } from "react";
 
+import { BulletList } from "./BulletList";
 import {
   EmptyHint,
   FieldRow,
@@ -59,8 +60,6 @@ export type Disclosure = {
 };
 
 const textareaClass = cn(controlClass, "h-auto py-1.5 leading-relaxed");
-
-const toLines = (value: string) => value.split("\n");
 
 function preview(parts: Array<string | undefined>, extra: number) {
   const head = parts.filter(Boolean).join(" · ");
@@ -518,13 +517,11 @@ export function ResumeFields({
                 endPlaceholder="Present"
               />
               <FieldRow label="Bullets" align="start">
-                <Textarea
-                  value={role.bullets.join("\n")}
-                  onChange={(e) => patch({ bullets: toLines(e.target.value) })}
-                  rows={3}
-                  aria-label={`Bullets for ${role.title || "role"}`}
-                  placeholder="One achievement per line"
-                  className={cn(textareaClass, "min-h-[4.5rem]")}
+                <BulletList
+                  listId={`experience:${index}:bullets`}
+                  owner={role.title || "role"}
+                  value={role.bullets}
+                  onChange={(bullets) => patch({ bullets })}
                 />
               </FieldRow>
             </ItemBlock>
@@ -615,13 +612,12 @@ export function ResumeFields({
                 />
               </FieldRow>
               <FieldRow label="Bullets" align="start">
-                <Textarea
-                  value={project.bullets.join("\n")}
-                  onChange={(e) => patch({ bullets: toLines(e.target.value) })}
-                  rows={2}
-                  aria-label={`Bullets for ${project.name || "project"}`}
+                <BulletList
+                  listId={`projects:${index}:bullets`}
+                  owner={project.name || "project"}
+                  value={project.bullets}
+                  onChange={(bullets) => patch({ bullets })}
                   placeholder="One line per point"
-                  className={cn(textareaClass, "min-h-[3rem]")}
                 />
               </FieldRow>
             </ItemBlock>
@@ -643,6 +639,7 @@ export function ResumeFields({
           location: "",
           startDate: "",
           endDate: "",
+          bullets: [],
         },
       ],
     });
@@ -736,6 +733,15 @@ export function ResumeFields({
                 onChange={(dates) => patch(dates)}
                 endPlaceholder="May 2023"
               />
+              <FieldRow label="Bullets" align="start">
+                <BulletList
+                  listId={`education:${index}:bullets`}
+                  owner={item.degree || item.institution || "entry"}
+                  value={item.bullets}
+                  onChange={(bullets) => patch({ bullets })}
+                  placeholder="Honours, coursework, activities"
+                />
+              </FieldRow>
             </ItemBlock>
           );
         })
@@ -835,20 +841,20 @@ export function ResumeFields({
 
         {section.layout === "bullets" && (
           <FieldRow label="Items" align="start">
-            <Textarea
-              value={titles.join("\n")}
-              onChange={(e) =>
+            <BulletList
+              listId={`${key}:items`}
+              owner={section.title || "section"}
+              value={titles}
+              onChange={(next) =>
                 setItems(
-                  toLines(e.target.value).map((title) => ({
-                    ...emptyCustomItem(),
+                  next.map((title, itemIndex) => ({
+                    ...(items[itemIndex] ?? emptyCustomItem()),
                     title,
                   })),
                 )
               }
-              rows={3}
-              aria-label={`Items in ${section.title || "section"}`}
-              placeholder="One per line"
-              className={cn(textareaClass, "min-h-[4.5rem]")}
+              placeholder="One per bullet"
+              addLabel="Add item"
             />
           </FieldRow>
         )}
@@ -1136,13 +1142,12 @@ function CustomEntries({
               />
             </FieldRow>
             <FieldRow label="Bullets" align="start">
-              <Textarea
-                value={item.bullets.join("\n")}
-                onChange={(e) => patch({ bullets: toLines(e.target.value) })}
-                rows={2}
-                aria-label={`Bullets for ${item.title || "entry"}`}
+              <BulletList
+                listId={`${sectionKey}:${index}:bullets`}
+                owner={item.title || "entry"}
+                value={item.bullets}
+                onChange={(bullets) => patch({ bullets })}
                 placeholder="One line per point"
-                className={cn(textareaClass, "min-h-[3rem]")}
               />
             </FieldRow>
           </ItemBlock>

@@ -60,6 +60,31 @@ export const upsertMyProfile = mutation({
           bullets: v.array(v.string()),
         }),
       ),
+      customSections: v.optional(
+        v.array(
+          v.object({
+            id: v.string(),
+            title: v.string(),
+            layout: v.union(
+              v.literal("entries"),
+              v.literal("bullets"),
+              v.literal("inline"),
+            ),
+            items: v.array(
+              v.object({
+                title: v.string(),
+                subtitle: v.optional(v.string()),
+                location: v.optional(v.string()),
+                startDate: v.optional(v.string()),
+                endDate: v.optional(v.string()),
+                description: v.optional(v.string()),
+                bullets: v.optional(v.array(v.string())),
+              }),
+            ),
+          }),
+        ),
+      ),
+      sectionOrder: v.optional(v.array(v.string())),
     }),
   },
   handler: async (ctx, args) => {

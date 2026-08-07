@@ -174,3 +174,49 @@ describe('normalizeGeneratedResume', () => {
     expect(result.experience).toHaveLength(GENERATED_RESUME.experience.length)
   })
 })
+
+describe('profile sections', () => {
+  const PROFILE_WITH_SECTIONS = {
+    ...PROFILE,
+    customSections: [
+      {
+        id: 'certs',
+        title: 'Certifications',
+        layout: 'entries',
+        items: [{ title: 'CKA' }],
+      },
+    ],
+    sectionOrder: ['experience', 'custom:certs', 'skills'],
+  }
+
+  it('carries the profile custom sections into a generated resume', () => {
+    const result = normalizeGeneratedResume(
+      GENERATED_RESUME,
+      PROFILE_WITH_SECTIONS,
+      JOB,
+    )
+    expect(result.customSections).toHaveLength(1)
+    expect(result.customSections[0].title).toBe('Certifications')
+    expect(result.sectionOrder).toEqual(['experience', 'custom:certs', 'skills'])
+  })
+
+  it('leaves a resume alone when the profile has none', () => {
+    const result = normalizeGeneratedResume(GENERATED_RESUME, PROFILE, JOB)
+    expect(result.customSections).toBeUndefined()
+    expect(result.sectionOrder).toBeUndefined()
+  })
+
+  it('does not overwrite sections the model already produced', () => {
+    const result = normalizeGeneratedResume(
+      {
+        ...GENERATED_RESUME,
+        customSections: [
+          { id: 'awards', title: 'Awards', layout: 'bullets', items: [{ title: 'A' }] },
+        ],
+      },
+      PROFILE_WITH_SECTIONS,
+      JOB,
+    )
+    expect(result.customSections[0].title).toBe('Awards')
+  })
+})

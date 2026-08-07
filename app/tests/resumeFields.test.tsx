@@ -13,7 +13,10 @@ import {
   type ResumeData,
 } from "../src/components/editor/model";
 import { ResumeFields } from "../src/components/editor/ResumeFields";
-import { useDisclosure } from "../src/components/editor/useDisclosure";
+import {
+  sectionsOpen,
+  useDisclosure,
+} from "../src/components/editor/useDisclosure";
 import { GENERATED_RESUME } from "./fixtures";
 
 afterEach(cleanup);
@@ -21,14 +24,16 @@ afterEach(cleanup);
 function Harness({
   initial,
   templateId = "custom:everything",
+  defaultOpen,
 }: {
   initial?: unknown;
   templateId?: string;
+  defaultOpen?: (key: string) => boolean;
 }) {
   const [data, setData] = useState<ResumeData>(() =>
     normalizeResumeData(initial ?? {}),
   );
-  const disclosure = useDisclosure("test-doc");
+  const disclosure = useDisclosure(defaultOpen);
   return (
     <>
       <ResumeFields
@@ -68,6 +73,44 @@ describe("editor fields", () => {
     ]) {
       expect(sectionToggle(name).getAttribute("aria-expanded")).toBe("false");
     }
+  });
+
+  it("can start with the sections open and the entries closed", () => {
+    render(<Harness initial={GENERATED_RESUME} defaultOpen={sectionsOpen} />);
+
+    expect(sectionToggle("Experience").getAttribute("aria-expanded")).toBe(
+      "true",
+    );
+    expect(sectionToggle("Contact").getAttribute("aria-expanded")).toBe("true");
+    expect(
+      screen
+        .getByRole("button", { name: /01\s*Senior Backend Engineer/ })
+        .getAttribute("aria-expanded"),
+    ).toBe("false");
+  });
+
+  it("opens fresh every time, whatever was collapsed before", () => {
+    const view = render(
+      <Harness initial={GENERATED_RESUME} defaultOpen={sectionsOpen} />,
+    );
+    fireEvent.click(sectionToggle("Experience"));
+    expect(sectionToggle("Experience").getAttribute("aria-expanded")).toBe(
+      "false",
+    );
+    view.unmount();
+
+    render(<Harness initial={GENERATED_RESUME} defaultOpen={sectionsOpen} />);
+    expect(sectionToggle("Experience").getAttribute("aria-expanded")).toBe(
+      "true",
+    );
+  });
+
+  it("collapses an open-by-default section on click", () => {
+    render(<Harness initial={GENERATED_RESUME} defaultOpen={sectionsOpen} />);
+    const toggle = sectionToggle("Experience");
+
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
   });
 
   it("says what is inside a section before it is opened", () => {
@@ -198,18 +241,103 @@ describe("links", () => {
 });
 
 describe("bullets", () => {
-  it("leaves a half-typed list alone", () => {
+  const openFirstRole = () => {
     render(<Harness initial={GENERATED_RESUME} />);
     openSection("Experience");
     fireEvent.click(
       screen.getByRole("button", { name: /01\s*Senior Backend Engineer/ }),
     );
+  };
 
-    const area = screen.getByLabelText("Bullets for Senior Backend Engineer");
-    fireEvent.change(area, { target: { value: "One\n\n" } });
+  const bullet = (index: number) =>
+    screen.getByLabelText(`Bullet ${index} for Senior Backend Engineer`);
 
-    expect(currentData().experience[0].bullets).toEqual(["One", "", ""]);
-    expect((area as HTMLTextAreaElement).value).toBe("One\n\n");
+  it("gives every bullet its own field", () => {
+    openFirstRole();
+    expect(currentData().experience[0].bullets).toHaveLength(3);
+    expect(bullet(1)).toBeTruthy();
+    expect(bullet(3)).toBeTruthy();
+  });
+
+  it("edits one bullet without touching the others", () => {
+    openFirstRole();
+    const before = currentData().experience[0].bullets;
+
+    fireEvent.change(bullet(2), { target: { value: "Rewrote it" } });
+
+    const after = currentData().experience[0].bullets;
+    expect(after[1]).toBe("Rewrote it");
+    expect(after[0]).toBe(before[0]);
+    expect(after[2]).toBe(before[2]);
+  });
+
+  it("adds a bullet with the button", () => {
+    openFirstRole();
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /Add bullet/ })[0],
+    );
+    expect(currentData().experience[0].bullets).toHaveLength(4);
+    expect(currentData().experience[0].bullets.at(-1)).toBe("");
+  });
+
+  it("starts the next bullet on Enter, right after this one", () => {
+    openFirstRole();
+    fireEvent.keyDown(bullet(1), { key: "Enter" });
+
+    const bullets = currentData().experience[0].bullets;
+    expect(bullets).toHaveLength(4);
+    expect(bullets[1]).toBe("");
+  });
+
+  it("never puts a line break inside a bullet", () => {
+    openFirstRole();
+    fireEvent.change(bullet(1), { target: { value: "One\ntwo" } });
+    expect(currentData().experience[0].bullets[0]).toBe("One two");
+  });
+
+  it("removes an empty bullet on backspace", () => {
+    openFirstRole();
+    fireEvent.change(bullet(3), { target: { value: "" } });
+    fireEvent.keyDown(bullet(3), { key: "Backspace" });
+
+    expect(currentData().experience[0].bullets).toHaveLength(2);
+  });
+
+  it("keeps the last bullet when backspacing it away", () => {
+    openFirstRole();
+    fireEvent.change(bullet(3), { target: { value: "" } });
+    fireEvent.keyDown(bullet(3), { key: "Backspace" });
+    fireEvent.change(bullet(2), { target: { value: "" } });
+    fireEvent.keyDown(bullet(2), { key: "Backspace" });
+    fireEvent.change(bullet(1), { target: { value: "" } });
+    fireEvent.keyDown(bullet(1), { key: "Backspace" });
+
+    expect(currentData().experience[0].bullets).toEqual([""]);
+  });
+
+  it("removes a bullet with its own delete", () => {
+    openFirstRole();
+    fireEvent.click(
+      screen.getByLabelText("Remove bullet 1 for Senior Backend Engineer"),
+    );
+    expect(currentData().experience[0].bullets).toHaveLength(2);
+  });
+
+  it("reorders bullets with the keyboard", () => {
+    openFirstRole();
+    const [first, second] = currentData().experience[0].bullets;
+
+    fireEvent.keyDown(
+      screen.getByLabelText(/^Reorder bullet 1 for Senior Backend Engineer\./),
+      {
+        key: "ArrowDown",
+      },
+    );
+
+    expect(currentData().experience[0].bullets.slice(0, 2)).toEqual([
+      second,
+      first,
+    ]);
   });
 });
 

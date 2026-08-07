@@ -25,6 +25,7 @@ export type EducationEntry = {
   location: string;
   startDate: string;
   endDate: string;
+  bullets: string[];
 };
 
 export type CustomLayout = "entries" | "bullets" | "inline";
@@ -193,6 +194,7 @@ export function normalizeResumeData(input: any): ResumeData {
         location: ensureString(edu?.location),
         startDate: ensureString(edu?.startDate),
         endDate: ensureString(edu?.endDate),
+        bullets: stringList(edu?.bullets),
       }))
     : [];
 
@@ -539,5 +541,70 @@ export function emptyCustomItem(): CustomItem {
     endDate: "",
     description: "",
     bullets: [],
+  };
+}
+
+export type ProfileDraft = {
+  personal: {
+    fullName: string;
+    email: string;
+    phone: string;
+    location: string;
+    links: ResumeLink[];
+  };
+  summary: string;
+  education: EducationEntry[];
+  experience: ExperienceEntry[];
+  skills: SkillGroup[];
+  projects: ProjectEntry[];
+  customSections?: CustomSection[];
+  sectionOrder?: string[];
+};
+
+export function profileToResume(profile: any): ResumeData {
+  const personal = profile?.personal ?? {};
+  return normalizeResumeData({
+    header: {
+      name: personal.fullName,
+      email: personal.email,
+      phone: personal.phone,
+      location: personal.location,
+      links: personal.links,
+    },
+    summary: profile?.summary,
+    skills: profile?.skills,
+    experience: profile?.experience,
+    projects: profile?.projects,
+    education: profile?.education,
+    customSections: profile?.customSections,
+    sectionOrder: profile?.sectionOrder,
+  });
+}
+
+export function resumeToProfile(resume: ResumeData): ProfileDraft {
+  return {
+    personal: {
+      fullName: resume.header.name,
+      email: resume.header.email,
+      phone: resume.header.phone,
+      location: resume.header.location,
+      links: resume.header.links.map((link) => ({
+        label: link.label,
+        url: link.url,
+      })),
+    },
+    summary: resume.summary,
+    education: resume.education.map((item) => ({ ...item })),
+    experience: resume.experience.map((item) => ({ ...item })),
+    skills: resume.skills.map((group) => ({
+      category: group.category,
+      items: [...group.items],
+    })),
+    projects: resume.projects.map((project) => ({ ...project })),
+    customSections: resume.customSections.map((section) => ({
+      ...section,
+      items: section.items.map((item) => ({ ...item })),
+    })),
+    sectionOrder: resume.sectionOrder,
   };
 }

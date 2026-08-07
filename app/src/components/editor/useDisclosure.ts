@@ -1,48 +1,24 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 
-export function useDisclosure(storageKey: string) {
+const isEntryKey = (key: string) => /:\d+$/.test(key);
+
+export const sectionsOpen = (key: string) => !isEntryKey(key);
+
+export function useDisclosure(
+  defaultOpen: (key: string) => boolean = () => false,
+) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    setOpen({});
-    if (typeof window === "undefined") return;
-    try {
-      const stored = window.sessionStorage.getItem(storageKey);
-      if (stored) setOpen(JSON.parse(stored));
-    } catch {}
-  }, [storageKey]);
+  return {
+    isOpen: (key: string) => open[key] ?? defaultOpen(key),
 
-  const write = useCallback(
-    (next: Record<string, boolean>) => {
-      try {
-        window.sessionStorage.setItem(storageKey, JSON.stringify(next));
-      } catch {}
-      return next;
-    },
-    [storageKey],
-  );
+    toggle: (key: string) =>
+      setOpen((prev) => ({ ...prev, [key]: !(prev[key] ?? defaultOpen(key)) })),
 
-  const isOpen = useCallback((key: string) => open[key] ?? false, [open]);
+    set: (key: string, value: boolean) =>
+      setOpen((prev) => ({ ...prev, [key]: value })),
 
-  const toggle = useCallback(
-    (key: string) =>
-      setOpen((prev) => write({ ...prev, [key]: !(prev[key] ?? false) })),
-    [write],
-  );
-
-  const set = useCallback(
-    (key: string, value: boolean) =>
-      setOpen((prev) => write({ ...prev, [key]: value })),
-    [write],
-  );
-
-  const setAll = useCallback(
-    (keys: string[], value: boolean) =>
-      setOpen(() =>
-        write(value ? Object.fromEntries(keys.map((key) => [key, true])) : {}),
-      ),
-    [write],
-  );
-
-  return { isOpen, toggle, set, setAll };
+    setAll: (keys: string[], value: boolean) =>
+      setOpen(Object.fromEntries(keys.map((key) => [key, value]))),
+  };
 }
