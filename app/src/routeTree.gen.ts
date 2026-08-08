@@ -10,7 +10,6 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TemplatesRouteImport } from './routes/templates'
-import { Route as StatisticsRouteImport } from './routes/statistics'
 import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as RoastRouteImport } from './routes/roast'
@@ -27,11 +26,6 @@ import { Route as ApiRenderTypstRouteImport } from './routes/api.render.typst'
 const TemplatesRoute = TemplatesRouteImport.update({
   id: '/templates',
   path: '/templates',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StatisticsRoute = StatisticsRouteImport.update({
-  id: '/statistics',
-  path: '/statistics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignUpRoute = SignUpRouteImport.update({
@@ -105,7 +99,6 @@ export interface FileRoutesByFullPath {
   '/roast': typeof RoastRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
-  '/statistics': typeof StatisticsRoute
   '/templates': typeof TemplatesRoute
   '/editor/$documentId': typeof EditorDocumentIdRoute
   '/extension/connect': typeof ExtensionConnectRoute
@@ -121,7 +114,6 @@ export interface FileRoutesByTo {
   '/roast': typeof RoastRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
-  '/statistics': typeof StatisticsRoute
   '/templates': typeof TemplatesRoute
   '/editor/$documentId': typeof EditorDocumentIdRoute
   '/extension/connect': typeof ExtensionConnectRoute
@@ -138,7 +130,6 @@ export interface FileRoutesById {
   '/roast': typeof RoastRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
-  '/statistics': typeof StatisticsRoute
   '/templates': typeof TemplatesRoute
   '/editor/$documentId': typeof EditorDocumentIdRoute
   '/extension/connect': typeof ExtensionConnectRoute
@@ -156,7 +147,6 @@ export interface FileRouteTypes {
     | '/roast'
     | '/sign-in'
     | '/sign-up'
-    | '/statistics'
     | '/templates'
     | '/editor/$documentId'
     | '/extension/connect'
@@ -172,7 +162,6 @@ export interface FileRouteTypes {
     | '/roast'
     | '/sign-in'
     | '/sign-up'
-    | '/statistics'
     | '/templates'
     | '/editor/$documentId'
     | '/extension/connect'
@@ -188,7 +177,6 @@ export interface FileRouteTypes {
     | '/roast'
     | '/sign-in'
     | '/sign-up'
-    | '/statistics'
     | '/templates'
     | '/editor/$documentId'
     | '/extension/connect'
@@ -205,7 +193,6 @@ export interface RootRouteChildren {
   RoastRoute: typeof RoastRoute
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
-  StatisticsRoute: typeof StatisticsRoute
   TemplatesRoute: typeof TemplatesRoute
   EditorDocumentIdRoute: typeof EditorDocumentIdRoute
   ExtensionConnectRoute: typeof ExtensionConnectRoute
@@ -219,13 +206,6 @@ declare module '@tanstack/react-router' {
       path: '/templates'
       fullPath: '/templates'
       preLoaderRoute: typeof TemplatesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/statistics': {
-      id: '/statistics'
-      path: '/statistics'
-      fullPath: '/statistics'
-      preLoaderRoute: typeof StatisticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sign-up': {
@@ -325,7 +305,6 @@ const rootRouteChildren: RootRouteChildren = {
   RoastRoute: RoastRoute,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
-  StatisticsRoute: StatisticsRoute,
   TemplatesRoute: TemplatesRoute,
   EditorDocumentIdRoute: EditorDocumentIdRoute,
   ExtensionConnectRoute: ExtensionConnectRoute,

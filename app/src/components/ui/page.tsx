@@ -112,35 +112,53 @@ export function PanelHeader({
   );
 }
 
-/**
- * A single number with its label. Figures are tabular so a column of them lines
- * up, and the label sits under the value — the number is what you scan for.
- */
-export function Stat({
-  label,
-  value,
-  hint,
+/** The bar sits behind the text, so a row stays one line. */
+export function BarList({
+  entries,
+  format = (key: string) => key,
   className,
+  rowClassName,
 }: {
-  label: string;
-  value: ReactNode;
-  hint?: ReactNode;
+  entries: Array<{ key: string; count: number; hint?: ReactNode }>;
+  format?: (key: string) => string;
   className?: string;
+  /** Taller rows when the list has to hold its own beside a chart. */
+  rowClassName?: string;
 }) {
+  const max = Math.max(...entries.map((entry) => entry.count), 1);
+
   return (
-    <div className={cn("min-w-0", className)}>
-      <div className="text-2xl font-semibold tabular-nums tracking-tight text-slate-900 dark:text-slate-50">
-        {value}
-      </div>
-      <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
-        {label}
-      </div>
-      {hint && (
-        <div className="mt-0.5 truncate text-[11px] text-slate-400 dark:text-slate-500">
-          {hint}
-        </div>
-      )}
-    </div>
+    <ul className={cn("p-2", className)}>
+      {entries.map((entry) => (
+        <li key={entry.key} className="relative">
+          <div
+            aria-hidden
+            className="absolute inset-y-0 left-0 rounded-[3px] bg-slate-100 transition-[width] duration-500 ease-out motion-reduce:transition-none dark:bg-slate-800/70"
+            style={{ width: `${(entry.count / max) * 100}%` }}
+          />
+          <div
+            className={cn(
+              "relative flex items-center justify-between gap-3 px-2 py-1.5",
+              rowClassName,
+            )}
+          >
+            <span className="truncate text-[13px] text-slate-700 dark:text-slate-200">
+              {format(entry.key)}
+            </span>
+            <span className="flex shrink-0 items-baseline gap-2">
+              {entry.hint && (
+                <span className="text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
+                  {entry.hint}
+                </span>
+              )}
+              <span className="text-[13px] tabular-nums text-slate-500 dark:text-slate-400">
+                {entry.count}
+              </span>
+            </span>
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 

@@ -61,7 +61,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     '/dashboard',
     '/generate',
     '/job-applications',
-    '/statistics',
     '/gallery',
     '/roast',
     '/templates',

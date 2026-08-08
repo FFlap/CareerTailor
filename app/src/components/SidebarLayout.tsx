@@ -1,7 +1,6 @@
 import { SignedIn, SignedOut, UserButton } from "@clerk/tanstack-react-start";
 import { Link } from "@tanstack/react-router";
 import {
-  BarChart3,
   Briefcase,
   FileText,
   Flame,
@@ -25,7 +24,6 @@ const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/generate", label: "Generate", icon: Sparkles },
   { to: "/job-applications", label: "Applications", icon: Briefcase },
-  { to: "/statistics", label: "Statistics", icon: BarChart3 },
   { to: "/gallery", label: "Documents", icon: FileText },
   { to: "/roast", label: "Roast", icon: Flame },
   { to: "/templates", label: "Templates", icon: LayoutTemplate },
