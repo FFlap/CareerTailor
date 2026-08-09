@@ -18,6 +18,13 @@ import {
   YAxis,
 } from "recharts";
 
+import {
+  JobList,
+  JobListHeader,
+  JobListSkeleton,
+  JobRow,
+  type JobStatus,
+} from "@/components/JobList";
 import { PipelineSankey } from "@/components/PipelineSankey";
 import SidebarLayout from "@/components/SidebarLayout";
 import {
@@ -30,29 +37,11 @@ import {
   Row,
 } from "@/components/ui/page";
 import { api } from "@/lib/convex";
+import { sourceLabel, titleCase } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
 import type { Id } from "../../convex/_generated/dataModel";
 import type { ReactNode } from "react";
-
-type JobStatus = "viewed" | "applied" | "interview" | "accepted" | "ghosted";
-
-const JOB_STATUS_OPTIONS: { value: JobStatus; label: string }[] = [
-  { value: "viewed", label: "Viewed" },
-  { value: "applied", label: "Applied" },
-  { value: "interview", label: "Interview" },
-  { value: "accepted", label: "Accepted" },
-  { value: "ghosted", label: "Ghosted" },
-];
-
-/** Status is carried by a dot, so the row stays quiet until you read it. */
-const STATUS_DOT: Record<JobStatus, string> = {
-  viewed: "bg-slate-300 dark:bg-slate-600",
-  applied: "bg-slate-500",
-  interview: "bg-amber-500",
-  accepted: "bg-emerald-500",
-  ghosted: "bg-rose-400",
-};
 
 /** Dark mode gets its own steps; the light ramp vanishes on a dark surface. */
 const SANKEY_LIGHT = ["#334155", "#64748b", "#94a3b8", "#cbd5e1"];
@@ -72,43 +61,12 @@ function formatDate(value: unknown) {
   });
 }
 
-function titleCase(value: string) {
-  return value.replace(/\b[a-z]/g, (char) => char.toUpperCase());
-}
-
-/** Board names are proper nouns; a bare hostname is already how it is written. */
-const SOURCE_LABEL: Record<string, string> = {
-  linkedin: "LinkedIn",
-  indeed: "Indeed",
-  glassdoor: "Glassdoor",
-  greenhouse: "Greenhouse",
-  lever: "Lever",
-  ashby: "Ashby",
-  workday: "Workday",
-  smartrecruiters: "SmartRecruiters",
-  workable: "Workable",
-  ziprecruiter: "ZipRecruiter",
-  monster: "Monster",
-  dice: "Dice",
-  wellfound: "Wellfound",
-  simplyhired: "SimplyHired",
-  seek: "SEEK",
-  extension: "Extension",
-  manual: "Added by hand",
-};
-
 /** Four strengths of ink; a busy day should read as darker, not as a new hue. */
 const HEAT_STEPS = [0, 0.28, 0.5, 0.75, 1] as const;
 
 function heatStep(total: number) {
   if (total <= 0) return HEAT_STEPS[0];
   return HEAT_STEPS[Math.min(total, HEAT_STEPS.length - 1)];
-}
-
-function sourceLabel(key: string) {
-  const known = SOURCE_LABEL[key.toLowerCase()];
-  if (known) return known;
-  return key.includes(".") ? key : titleCase(key);
 }
 
 function templateLabel(key: string) {
@@ -126,7 +84,9 @@ function useElementWidth<T extends HTMLElement>() {
   useEffect(() => {
     if (!node || typeof ResizeObserver === "undefined") return;
     const update = () =>
-      setWidth(Math.max(0, Math.round(node.getBoundingClientRect().width) - 32));
+      setWidth(
+        Math.max(0, Math.round(node.getBoundingClientRect().width) - 32),
+      );
     update();
     const observer = new ResizeObserver(update);
     observer.observe(node);
@@ -152,135 +112,7 @@ function useIsDark() {
   return isDark;
 }
 
-function demoCalendar() {
-  const day = 24 * 60 * 60 * 1000;
-  const today = Math.floor(Date.now() / day);
-  const days = Array.from({ length: 105 }, (_, index) => {
-    const ts = (today - 104 + index) * day;
-    const weekday = new Date(ts).getUTCDay();
-    const rested = weekday === 0 || weekday === 6;
-    const seed = (index * 7919) % 11;
-    const total = rested || seed > 7 ? 0 : seed % 5;
-    return { ts, jobs: Math.ceil(total / 2), documents: Math.floor(total / 2) };
-  });
-
-  // An unbroken tail, so the demo streak is never accidentally zero.
-  for (let index = days.length - 6; index < days.length; index += 1) {
-    days[index] = { ...days[index], jobs: Math.max(1, days[index].jobs) };
-  }
-
-  return {
-    calendar: days,
-    streak: {
-      current: 6,
-      best: 14,
-      activeDays: days.filter((d) => d.jobs + d.documents > 0).length,
-      totalDays: days.length,
-    },
-  };
-}
-
-/** Dev-only sample so the page can be designed and reviewed without an account. */
-const DEMO = {
-  stats: {
-    jobCounts: {
-      total: 42,
-      viewed: 18,
-      applied: 12,
-      interview: 6,
-      accepted: 3,
-      ghosted: 3,
-    },
-    jobRates: {
-      appliedRate: 24 / 42,
-      interviewRate: 9 / 24,
-      acceptanceRate: 3 / 9,
-      ghostRate: 3 / 24,
-    },
-    jobTrend: Array.from({ length: 12 }, (_, i) => ({
-      label: `Jun ${i + 1}`,
-      added: [2, 3, 3, 4, 4, 5, 4, 4, 4, 4, 3, 3][i],
-    })),
-    documentTrend: Array.from({ length: 12 }, (_, i) => ({
-      resumes: [1, 1, 2, 1, 2, 1, 2, 1, 2, 1, 1, 1][i],
-      coverLetters: [0, 1, 0, 1, 1, 2, 1, 1, 0, 1, 2, 1][i],
-    })),
-    docCounts: { total: 28, resumes: 16, coverLetters: 12 },
-    docTop: {
-      templates: [
-        { key: "basic_resume", count: 9 },
-        { key: "modern_cv", count: 6 },
-        { key: "modern_cv_cover", count: 5 },
-        { key: "custom:example", count: 4 },
-      ],
-      tones: [
-        { key: "Confident", count: 10 },
-        { key: "Direct", count: 8 },
-        { key: "Friendly", count: 6 },
-      ],
-    },
-    companies: 31,
-    untailored: 4,
-    sources: [
-      { key: "linkedin", count: 19 },
-      { key: "indeed", count: 11 },
-      { key: "greenhouse", count: 6 },
-      { key: "careers.stripe.com", count: 4 },
-      { key: "manual", count: 2 },
-    ],
-    thisWeek: { jobs: 5, prevJobs: 3, documents: 4, prevDocuments: 6 },
-    ...demoCalendar(),
-  },
-  jobs: [
-    ["Staff Frontend Engineer", "Figma", "interview"],
-    ["Design Engineer", "Linear", "applied"],
-    ["Senior Product Engineer", "Vercel", "applied"],
-    ["Frontend Platform Engineer", "Stripe", "accepted"],
-    ["UI Engineer", "Notion", "viewed"],
-    ["Web Engineer", "Cloudflare", "ghosted"],
-    ["Product Engineer", "Retool", "viewed"],
-    ["Frontend Engineer", "Ramp", "applied"],
-  ].map(([title, company, status], i) => ({
-    _id: `job-${i}`,
-    title,
-    company,
-    status,
-    url: "https://example.com",
-    addedAt: Date.now() - i * 86_400_000,
-  })),
-  documents: [
-    ["Staff Frontend Engineer", "Figma", "resume"],
-    ["Design Engineer", "Linear", "cover_letter"],
-    ["Senior Product Engineer", "Vercel", "resume"],
-    ["Frontend Platform Engineer", "Stripe", "cover_letter"],
-    ["UI Engineer", "Notion", "resume"],
-    ["Frontend Engineer", "Ramp", "resume"],
-  ].map(([title, company, type], i) => ({
-    _id: `doc-${i}`,
-    type,
-    job: { title, company },
-    updatedAt: Date.now() - i * 43_200_000,
-  })),
-};
-
 function DashboardPage() {
-  const [demo, setDemo] = useState(false);
-
-  useEffect(() => {
-    if (!import.meta.env.DEV) return;
-    setDemo(new URLSearchParams(window.location.search).get("demo") === "1");
-  }, []);
-
-  if (demo) {
-    return (
-      <DashboardBody
-        stats={DEMO.stats}
-        jobs={DEMO.jobs}
-        documents={DEMO.documents}
-      />
-    );
-  }
-
   return (
     <>
       <AuthLoading>
@@ -349,7 +181,7 @@ function DashboardBody({
   stats: any | undefined;
   jobs: any[] | undefined;
   documents: any[] | undefined;
-  onStatusChange?: (jobId: string, status: JobStatus) => void;
+  onStatusChange: (jobId: string, status: JobStatus) => void;
 }) {
   const { user } = useUser();
   const [mounted, setMounted] = useState(false);
@@ -515,9 +347,7 @@ function DashboardBody({
             <Panel className="min-w-0 lg:col-span-2">
               <PanelHeader
                 title="Activity"
-                meta={
-                  <span className="hidden sm:inline">Per week</span>
-                }
+                meta={<span className="hidden sm:inline">Per week</span>}
                 actions={
                   <div className="flex items-center gap-4">
                     <Swatch opacity={0.75}>Jobs tracked</Swatch>
@@ -634,101 +464,40 @@ function DashboardBody({
             <Panel className="min-w-0 lg:col-span-2">
               <PanelHeader
                 title="Tracked jobs"
-                meta={jobs?.length ? `${jobs.length}` : undefined}
+                meta={jobs?.length ? "Most recent" : undefined}
                 actions={
                   <Link
                     to="/job-applications"
                     className="rounded px-2 py-1 text-xs text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
                   >
-                    All jobs
+                    {counts.total > 0 ? `All ${counts.total} jobs` : "All jobs"}
                   </Link>
                 }
               />
-              {jobs === undefined ? (
-                <p className="px-4 py-6 text-sm text-slate-400">Loading…</p>
-              ) : jobs.length === 0 ? (
-                <EmptyState
-                  className="py-10"
-                  title="No jobs tracked"
-                  description="The browser extension adds jobs as you browse. You can also paste one into Generate."
-                />
-              ) : (
-                <ul>
-                  {jobs.slice(0, 8).map((job: any) => {
-                    const status = (job.status ?? "viewed") as JobStatus;
-                    const addedAt =
-                      job.addedAt ?? job.createdAt ?? job.lastSeenAt;
-                    return (
-                      <Row as="li" key={job._id}>
-                        <span
-                          aria-hidden
-                          className={cn(
-                            "h-1.5 w-1.5 shrink-0 rounded-full",
-                            STATUS_DOT[status],
-                          )}
+              <JobList>
+                {jobs === undefined ? (
+                  <JobListSkeleton rows={5} />
+                ) : jobs.length === 0 ? (
+                  <EmptyState
+                    className="py-10"
+                    title="No jobs tracked"
+                    description="The browser extension adds jobs as you browse. You can also paste one into Generate."
+                  />
+                ) : (
+                  <>
+                    <JobListHeader />
+                    <ul>
+                      {jobs.slice(0, 8).map((job: any) => (
+                        <JobRow
+                          key={job._id}
+                          job={job}
+                          onStatusChange={onStatusChange}
                         />
-                        <div className="min-w-0 flex-1">
-                          {job.url ? (
-                            <a
-                              href={job.url}
-                              target="_blank"
-                              rel="noreferrer noopener"
-                              className="block truncate text-[13px] font-medium text-slate-900 underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-slate-900/15 dark:text-slate-100"
-                            >
-                              {job.title}
-                            </a>
-                          ) : (
-                            <span className="block truncate text-[13px] font-medium text-slate-900 dark:text-slate-100">
-                              {job.title}
-                            </span>
-                          )}
-                          <span className="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400">
-                            {job.company}
-                          </span>
-                        </div>
-
-                        <span className="hidden shrink-0 text-xs tabular-nums text-slate-400 sm:block dark:text-slate-500">
-                          {formatDate(addedAt)}
-                        </span>
-
-                        <select
-                          aria-label={`Status for ${job.title}`}
-                          value={status}
-                          onChange={(event) =>
-                            onStatusChange?.(
-                              job._id,
-                              event.target.value as JobStatus,
-                            )
-                          }
-                          className="h-7 shrink-0 rounded-md border border-slate-200 bg-white px-1.5 text-xs text-slate-600 outline-none focus-visible:border-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"
-                        >
-                          {JOB_STATUS_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-
-                        <Link
-                          to="/generate"
-                          search={{
-                            title: job.title,
-                            company: job.company,
-                            description: job.description,
-                            url: job.url,
-                            source: job.source,
-                            jobId: job.jobId,
-                            addedAt,
-                          }}
-                          className="shrink-0 rounded px-2 py-1 text-xs text-slate-500 opacity-0 transition-opacity hover:bg-slate-100 hover:text-slate-900 focus-visible:opacity-100 group-hover/row:opacity-100 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-                        >
-                          Generate
-                        </Link>
-                      </Row>
-                    );
-                  })}
-                </ul>
-              )}
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </JobList>
             </Panel>
 
             <Panel className="min-w-0">
@@ -800,7 +569,9 @@ function DashboardBody({
                 <Caption>
                   Job sites
                   {sources.length > 0 && (
-                    <span className="ml-1.5 tabular-nums">{sources.length}</span>
+                    <span className="ml-1.5 tabular-nums">
+                      {sources.length}
+                    </span>
                   )}
                 </Caption>
                 {sources.length === 0 ? (

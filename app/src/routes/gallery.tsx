@@ -8,13 +8,8 @@ import {
 import { useMemo, useState } from "react";
 
 import SidebarLayout from "@/components/SidebarLayout";
-import {
-  EmptyState,
-  Page,
-  PageHeader,
-  Panel,
-  Row,
-} from "@/components/ui/page";
+import { EmptyState, Page, PageHeader, Panel, Row } from "@/components/ui/page";
+import { Pagination, usePagination } from "@/components/ui/pagination";
 import { api } from "@/lib/convex";
 
 export const Route = createFileRoute("/gallery")({
@@ -58,7 +53,10 @@ function GalleryPage() {
 }
 
 function GalleryContent() {
-  const documents = useQuery(api.documents.listMyRecentDocuments, { limit: 24 });
+  // Paging means a longer window costs nothing to render.
+  const documents = useQuery(api.documents.listMyRecentDocuments, {
+    limit: 100,
+  });
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -71,6 +69,8 @@ function GalleryContent() {
         .some((field: string) => field.toLowerCase().includes(search)),
     );
   }, [documents, query]);
+
+  const paged = usePagination(filtered, { resetKey: query.trim() });
 
   return (
     <SidebarLayout>
@@ -112,37 +112,50 @@ function GalleryContent() {
               }
             />
           ) : (
-            <ul>
-              {filtered.map((doc: any) => (
-                <Row as="li" key={doc._id}>
-                  <Link
-                    to="/editor/$documentId"
-                    params={{ documentId: doc._id }}
-                    className="min-w-0 flex-1 outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15"
-                  >
-                    <span className="block truncate text-[13px] font-medium text-slate-900 dark:text-slate-100">
-                      {doc.job?.title || "Untitled document"}
+            <>
+              <ul>
+                {paged.pageItems.map((doc: any) => (
+                  <Row as="li" key={doc._id}>
+                    <Link
+                      to="/editor/$documentId"
+                      params={{ documentId: doc._id }}
+                      className="min-w-0 flex-1 outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15"
+                    >
+                      <span className="block truncate text-[13px] font-medium text-slate-900 dark:text-slate-100">
+                        {doc.job?.title || "Untitled document"}
+                      </span>
+                      <span className="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400">
+                        {[
+                          doc.type === "cover_letter"
+                            ? "Cover letter"
+                            : "Resume",
+                          doc.job?.company,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    </Link>
+                    <span className="shrink-0 text-xs tabular-nums text-slate-400 dark:text-slate-500">
+                      {new Date(
+                        doc.updatedAt ?? doc.createdAt,
+                      ).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                      })}
                     </span>
-                    <span className="mt-0.5 block truncate text-xs text-slate-500 dark:text-slate-400">
-                      {[
-                        doc.type === "cover_letter" ? "Cover letter" : "Resume",
-                        doc.job?.company,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </span>
-                  </Link>
-                  <span className="shrink-0 text-xs tabular-nums text-slate-400 dark:text-slate-500">
-                    {new Date(
-                      doc.updatedAt ?? doc.createdAt,
-                    ).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </span>
-                </Row>
-              ))}
-            </ul>
+                  </Row>
+                ))}
+              </ul>
+              <Pagination
+                page={paged.page}
+                pageCount={paged.pageCount}
+                from={paged.from}
+                to={paged.to}
+                total={paged.total}
+                noun="document"
+                onPage={paged.setPage}
+              />
+            </>
           )}
         </Panel>
       </Page>

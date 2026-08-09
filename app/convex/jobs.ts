@@ -104,7 +104,22 @@ export const listMyJobs = query({
       .withIndex('by_user_updatedAt', (q) => q.eq('userId', userId))
       .order('desc')
       .take(limit)
-    return results
+
+    // One pass over the user's documents beats an index read per row.
+    const documents = await ctx.db
+      .query('documents')
+      .withIndex('by_user_createdAt', (q) => q.eq('userId', userId))
+      .collect()
+    const documentCounts = new Map<string, number>()
+    for (const doc of documents) {
+      if (!doc.jobId) continue
+      documentCounts.set(doc.jobId, (documentCounts.get(doc.jobId) ?? 0) + 1)
+    }
+
+    return results.map((job) => ({
+      ...job,
+      documentCount: documentCounts.get(job._id) ?? 0,
+    }))
   },
 })
 
