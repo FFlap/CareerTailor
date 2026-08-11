@@ -4,6 +4,7 @@ import {
   Authenticated,
   AuthLoading,
   Unauthenticated,
+  useAction,
   useMutation,
   useQuery,
 } from "convex/react";
@@ -37,12 +38,25 @@ import {
 import { Meta, PaneTab } from "@/components/editor/primitives";
 import { ResumeFields } from "@/components/editor/ResumeFields";
 import { useDisclosure } from "@/components/editor/useDisclosure";
+import { ReviewPanel } from "@/components/review/ReviewPanel";
+import {
+  formatReviewDate,
+  locateQuote,
+  type ReviewComment,
+} from "@/components/review/model";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/convex";
+import type { PdfPages } from "@/lib/pdfHighlight";
 import { cn } from "@/lib/utils";
 
+type PaneKey = "fields" | "source" | "review";
+
 export const Route = createFileRoute("/editor/$documentId")({
+  validateSearch: (search: Record<string, unknown>): { pane?: PaneKey } =>
+    search.pane === "review" || search.pane === "source"
+      ? { pane: search.pane }
+      : {},
   component: EditorPage,
 });
 
@@ -72,11 +86,19 @@ function EditorPage() {
 
 function EditorContent() {
   const { documentId } = Route.useParams();
+  const { pane } = Route.useSearch();
   const doc = useQuery(api.documents.getMyDocument, {
     documentId: documentId as Id<"documents">,
   });
   const updateTypstSource = useMutation(api.documents.updateMyTypstSource);
   const updateDocumentData = useMutation(api.documents.updateMyDocumentData);
+  const runReview = useAction(api.reviews.reviewResume);
+  const review = useQuery(
+    api.reviews.latestForDocument,
+    doc?.type === "resume"
+      ? { documentId: documentId as Id<"documents"> }
+      : "skip",
+  );
 
   const [source, setSource] = useState("");
   const [status, setStatus] = useState<string>("");
@@ -87,7 +109,14 @@ function EditorContent() {
   const [isDark, setIsDark] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
-  const [activeTab, setActiveTab] = useState<"fields" | "source">("fields");
+  const [activeTab, setActiveTab] = useState<PaneKey>("fields");
+  const [activeComment, setActiveComment] = useState<number | null>(null);
+  const [isReviewing, setIsReviewing] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [isMarkingUp, setIsMarkingUp] = useState(false);
+  const [markupError, setMarkupError] = useState<string | null>(null);
+  const reviewPdfRef = useRef<HTMLDivElement | null>(null);
+  const reviewPagesRef = useRef<PdfPages>(new Map());
   const [structuredData, setStructuredData] = useState<
     ResumeData | CoverLetterData | null
   >(null);
@@ -282,6 +311,134 @@ function EditorContent() {
     void render(source);
   }, [doc, source, render]);
 
+  // Arriving from Generate with a review already written should open on it.
+  useEffect(() => {
+    if (!pane || !doc) return;
+    if (pane === "review" && doc.type !== "resume") return;
+    setActiveTab(pane);
+  }, [doc, pane]);
+
+  const reviewComments: ReviewComment[] = useMemo(
+    () => (Array.isArray(review?.comments) ? review.comments : []),
+    [review],
+  );
+
+  const reviewQuotes = useMemo(
+    () => reviewComments.map((comment) => ({ id: comment.id, quote: comment.quote })),
+    [reviewComments],
+  );
+
+  const markedUpVisible = activeTab === "review" && Boolean(review) && !markupError;
+
+  /**
+   * The canvas preview carries no text, so a note has nothing to point at. On
+   * the review pane the document is compiled to a PDF instead, which brings a
+   * text layer the notes can mark.
+   */
+  useEffect(() => {
+    if (activeTab !== "review" || !review || !doc || !source) return;
+    const container = reviewPdfRef.current;
+    if (!container) return;
+
+    let cancelled = false;
+    setIsMarkingUp(true);
+    setMarkupError(null);
+
+    (async () => {
+      const { renderTypstToPdfBytesInBrowser } =
+        await import("@/lib/typst/renderClient");
+      const { renderPdfWithTextLayer, applyHighlights } =
+        await import("@/lib/pdfHighlight");
+      const bytes = await renderTypstToPdfBytesInBrowser({
+        source,
+        documentType: doc.type,
+        templateId: doc.templateId,
+      });
+      if (cancelled) return;
+      reviewPagesRef.current = await renderPdfWithTextLayer({
+        data: bytes.slice().buffer,
+        container,
+        isCancelled: () => cancelled,
+      });
+      if (cancelled) return;
+      applyHighlights(reviewPagesRef.current, reviewQuotes, null);
+    })()
+      .catch((error) => {
+        if (cancelled) return;
+        setMarkupError(
+          error instanceof Error ? error.message : "The marked-up page failed.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setIsMarkingUp(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, doc, review, source, reviewQuotes]);
+
+  useEffect(() => {
+    if (activeTab !== "review" || !reviewPagesRef.current.size) return;
+    void import("@/lib/pdfHighlight").then(({ applyHighlights }) =>
+      applyHighlights(reviewPagesRef.current, reviewQuotes, activeComment),
+    );
+  }, [activeComment, activeTab, reviewQuotes]);
+
+  const startReview = useCallback(async () => {
+    if (!doc) return;
+    setReviewError(null);
+    setIsReviewing(true);
+    try {
+      // Review what is on screen, not the last thing that happened to be saved.
+      if (structuredDirty && !sourceOverridden) {
+        await applyFields({ silent: true });
+      }
+      await runReview({ documentId: doc._id });
+      pushStatus("Review ready.");
+    } catch (error) {
+      setReviewError(
+        error instanceof Error ? error.message : "The review failed.",
+      );
+    } finally {
+      setIsReviewing(false);
+    }
+  }, [
+    applyFields,
+    doc,
+    pushStatus,
+    runReview,
+    sourceOverridden,
+    structuredDirty,
+  ]);
+
+  /** Shows the quoted line on the page, without leaving the review. */
+  const showOnPage = useCallback((comment: ReviewComment) => {
+    setActiveComment(comment.id);
+    void import("@/lib/pdfHighlight").then(({ scrollToComment }) =>
+      scrollToComment(reviewPagesRef.current, comment.id),
+    );
+  }, []);
+
+  /** Opens the field a note is about and marks it, so the fix is one scroll away. */
+  const jumpToComment = useCallback(
+    (comment: ReviewComment) => {
+      showOnPage(comment);
+      const target = locateQuote(structuredData as ResumeData | null, comment);
+      if (!target) return;
+      setActiveTab("fields");
+      target.keys.forEach((key) => disclosure.set(key, true));
+      window.setTimeout(() => {
+        const node = document.getElementById(target.domId)?.parentElement;
+        node?.scrollIntoView({ behavior: "smooth", block: "center" });
+        if (!node) return;
+        node.classList.add("field-flash");
+        window.setTimeout(() => node.classList.remove("field-flash"), 1200);
+      }, 120);
+    },
+    [disclosure, showOnPage, structuredData],
+  );
+
   const wordCount = useMemo(() => {
     const trimmed = source.trim();
     if (!trimmed) return 0;
@@ -299,6 +456,13 @@ function EditorContent() {
     if (!doc?.type) return "Document";
     return doc.type === "cover_letter" ? "Cover Letter" : "Resume";
   }, [doc?.type]);
+
+  /** The posting names the document; without one, its kind has to do. */
+  const docTitle = useMemo(() => {
+    const job = doc?.job;
+    if (!job) return docTypeLabel;
+    return [job.title, job.company].filter(Boolean).join(" · ") || docTypeLabel;
+  }, [doc?.job, docTypeLabel]);
 
   const idleStatus = useMemo(() => {
     if (renderError) return "Compile error";
@@ -335,7 +499,7 @@ function EditorContent() {
     if (!doc) return;
     if (typeof window === "undefined") return;
     const shareUrl = window.location.href;
-    const shareTitle = doc?.title || docTypeLabel;
+    const shareTitle = docTitle;
     setIsSharing(true);
     try {
       if (navigator.share) {
@@ -358,7 +522,7 @@ function EditorContent() {
     } finally {
       setIsSharing(false);
     }
-  }, [doc, docTypeLabel, pushStatus]);
+  }, [doc, docTitle, pushStatus]);
 
   const handleExportPdf = useCallback(async () => {
     if (!doc) return;
@@ -373,12 +537,17 @@ function EditorContent() {
         documentType: doc.type,
         templateId: doc.templateId,
       });
-      const blob = new Blob([pdfBytes], { type: "application/pdf" });
+      // Copied into its own buffer: a view over a shared one is not a BlobPart.
+      const blob = new Blob([pdfBytes.slice().buffer], {
+        type: "application/pdf",
+      });
       const url = URL.createObjectURL(blob);
-      const baseName = (doc?.title || docTypeLabel).replace(
-        /[^a-z0-9]+/gi,
-        "-",
-      );
+      // The kind is always in the name, so a résumé and its letter never collide.
+      const baseName = [docTitle === docTypeLabel ? "" : docTitle, docTypeLabel]
+        .filter(Boolean)
+        .join(" ")
+        .replace(/[^a-z0-9]+/gi, "-")
+        .replace(/^-+|-+$/g, "");
       const fileName = `${baseName || "document"}.pdf`;
       const anchor = document.createElement("a");
       anchor.href = url;
@@ -393,7 +562,7 @@ function EditorContent() {
     } finally {
       setIsExporting(false);
     }
-  }, [doc, docTypeLabel, pushStatus, source]);
+  }, [doc, docTitle, docTypeLabel, pushStatus, source]);
 
   const handleFieldsChange = useCallback(
     (next: ResumeData | CoverLetterData) => {
@@ -434,7 +603,7 @@ function EditorContent() {
   ]);
 
   const switchTab = useCallback(
-    async (next: "fields" | "source") => {
+    async (next: PaneKey) => {
       if (next === activeTab) return;
       if (autoApplyTimeout.current) {
         window.clearTimeout(autoApplyTimeout.current);
@@ -490,7 +659,7 @@ function EditorContent() {
 
           <div className="flex min-w-0 items-baseline gap-3">
             <h1 className="truncate text-sm font-medium tracking-tight text-slate-900 dark:text-slate-100">
-              {doc?.title || docTypeLabel}
+              {docTitle}
             </h1>
             <Meta className="hidden shrink-0 sm:inline">
               {docTypeLabel} · {templateLabel}
@@ -579,9 +748,38 @@ function EditorContent() {
               >
                 Typst
               </PaneTab>
+              {doc.type === "resume" && (
+                <PaneTab
+                  active={activeTab === "review"}
+                  onClick={() => void switchTab("review")}
+                >
+                  <span className="flex items-baseline gap-1.5">
+                    Review
+                    {review && (
+                      <span className="text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
+                        {review.overall}
+                      </span>
+                    )}
+                  </span>
+                </PaneTab>
+              )}
 
               <div className="ml-auto flex items-center gap-1">
-                {activeTab === "fields" ? (
+                {activeTab === "review" ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void startReview()}
+                    disabled={isReviewing}
+                    className="h-7 px-2 text-[11px] font-normal text-slate-400 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-40 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+                  >
+                    {isReviewing
+                      ? "Reading…"
+                      : review
+                        ? "Review again"
+                        : "Review"}
+                  </Button>
+                ) : activeTab === "fields" ? (
                   <>
                     <Button
                       variant="ghost"
@@ -688,6 +886,59 @@ function EditorContent() {
                   className="min-h-0 flex-1 resize-none rounded-none border-0 bg-transparent px-4 py-4 font-mono text-[12.5px] leading-6 text-slate-700 shadow-none focus-visible:ring-0 dark:text-slate-300"
                 />
               </div>
+            ) : activeTab === "review" ? (
+              review === undefined ? (
+                <div className="flex min-h-0 flex-1 items-center justify-center">
+                  <Meta>Loading</Meta>
+                </div>
+              ) : review === null ? (
+                <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-8 text-center">
+                  <div className="max-w-[42ch] space-y-1.5">
+                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                      Nobody has read this yet
+                    </p>
+                    <p className="text-[13px] leading-relaxed text-slate-500 dark:text-slate-400">
+                      A review scores this résumé on parsing, readability, and
+                      impact, then names every line that is not earning its
+                      place. It is saved here and in your documents.
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => void startReview()}
+                    disabled={isReviewing}
+                    className="h-8 bg-slate-900 px-3 text-xs font-medium text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+                  >
+                    {isReviewing && (
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    )}
+                    {isReviewing ? "Reading it" : "Review this résumé"}
+                  </Button>
+                  {reviewError && (
+                    <p className="max-w-[42ch] text-xs text-rose-600 dark:text-rose-400">
+                      {reviewError}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {(reviewError || markupError) && (
+                    <p className="shrink-0 border-b border-rose-200 bg-rose-50 px-4 py-2 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
+                      {reviewError ??
+                        `${markupError} The notes below still apply.`}
+                    </p>
+                  )}
+                  <ReviewPanel
+                    summary={review.summary}
+                    metrics={review.metrics}
+                    comments={reviewComments}
+                    activeId={activeComment}
+                    onActivate={setActiveComment}
+                    onSelect={jumpToComment}
+                    selectLabel="Fix"
+                  />
+                </>
+              )
             ) : (
               <div className="@container/fields min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 sm:px-5">
                 {doc.type === "resume" ? (
@@ -713,13 +964,21 @@ function EditorContent() {
               <Meta>
                 {activeTab === "source"
                   ? `${source.split("\n").length} lines`
-                  : structuredDirty
-                    ? "Unapplied edits"
-                    : sourceOverridden
-                      ? "Fields detached"
-                      : "Fields drive the source"}
+                  : activeTab === "review"
+                    ? review
+                      ? `Read ${formatReviewDate(review.createdAt)}`
+                      : "Not reviewed"
+                    : structuredDirty
+                      ? "Unapplied edits"
+                      : sourceOverridden
+                        ? "Fields detached"
+                        : "Fields drive the source"}
               </Meta>
-              <Meta>{wordCount} words</Meta>
+              <Meta>
+                {activeTab === "review" && review
+                  ? `${reviewComments.length} notes`
+                  : `${wordCount} words`}
+              </Meta>
             </div>
           </section>
 
@@ -778,7 +1037,33 @@ function EditorContent() {
             )}
 
             <div className="custom-scrollbar flex min-h-0 flex-1 flex-col items-center overflow-auto p-6 lg:p-10">
-              <div className="relative w-full max-w-[595px]">
+              {/* The marked-up page replaces the plain preview on the review
+                  pane. Both stay mounted so neither has to re-render on a tab
+                  change. */}
+              <div
+                className={cn(
+                  "w-full max-w-[595px] flex-col items-center gap-4",
+                  markedUpVisible ? "flex" : "hidden",
+                )}
+              >
+                <div ref={reviewPdfRef} className="flex flex-col gap-4" />
+                {isMarkingUp && (
+                  <div className="flex flex-col items-center gap-2 py-16">
+                    <Loader2
+                      aria-hidden
+                      className="h-4 w-4 animate-spin text-slate-300 dark:text-slate-700"
+                    />
+                    <Meta>Marking up the page</Meta>
+                  </div>
+                )}
+              </div>
+
+              <div
+                className={cn(
+                  "relative w-full max-w-[595px]",
+                  markedUpVisible && "hidden",
+                )}
+              >
                 <div
                   ref={previewRef}
                   className="typst-preview w-full shadow-[0_1px_2px_rgba(15,23,42,0.06),0_8px_24px_-12px_rgba(15,23,42,0.25)]"

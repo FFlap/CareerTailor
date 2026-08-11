@@ -28,8 +28,10 @@ import {
   withSampleData,
 } from '@/lib/customTemplates'
 import { renderTypstToCanvasInBrowser } from '@/lib/typst/renderClient'
-import {
-} from '@/lib/models'
+import { extractTextFromPdf } from '@/lib/extractText'
+import { ReviewSetup } from '@/components/review/ReviewSetup'
+import { stepLabel, stepProgress } from '../../convex/lib/progress'
+import { cn } from '@/lib/utils'
 import { useElapsedProgress } from '@/lib/useElapsedProgress'
 import {
   countPdfPages,
@@ -392,11 +394,17 @@ function GenerateContent() {
   const canQueryTemplates = isAuthenticated && !isLoading
   const customTemplates = useQuery(
     api.customTemplates.listMyTemplates,
-    canQueryTemplates ? {} : undefined,
+    canQueryTemplates ? {} : 'skip',
   )
   const generate = useAction(api.generation.generateDocuments)
   const updateDocumentData = useMutation(api.documents.updateMyDocumentData)
   const convexClient = useConvex()
+  const runReview = useAction(api.reviews.reviewResume)
+  const createUploadUrl = useMutation(api.reviews.generateUploadUrl)
+  const myDocuments = useQuery(
+    api.documents.listMyRecentDocuments,
+    canQueryTemplates ? { limit: 50 } : 'skip',
+  )
 
   const profile = (profileDoc as any)?.profile
 
@@ -441,8 +449,36 @@ function GenerateContent() {
   const [tone, setTone] = useState<string>('professional')
   const [targetLength, setTargetLength] = useState<string>('1_page')
   const [status, setStatus] = useState<string>('')
+  const [statusIsProblem, setStatusIsProblem] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const progress = useElapsedProgress(isGenerating)
+
+  function say(text: string, isProblem = false) {
+    setStatus(text)
+    setStatusIsProblem(isProblem)
+  }
+
+  const startRun = useMutation(api.generation.startRun)
+  const markRun = useMutation(api.generation.markRun)
+  const [runId, setRunId] = useState<Id<'generationRuns'> | null>(null)
+  const run = useQuery(api.generation.runStatus, runId ? { runId } : 'skip')
+  // The page count runs in the browser, so that step is not the server's to tell.
+  const [localStep, setLocalStep] = useState<string | null>(null)
+
+  const [mode, setMode] = useState<'write' | 'review'>('write')
+  const [reviewSource, setReviewSource] = useState<'upload' | 'document'>('upload')
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploadText, setUploadText] = useState('')
+  const [uploadNote, setUploadNote] = useState('')
+  const [isExtracting, setIsExtracting] = useState(false)
+  const [selectedDocId, setSelectedDocId] = useState<string>('')
+  const [isReviewing, setIsReviewing] = useState(false)
+  const reviewProgress = useElapsedProgress(isReviewing)
+
+  const resumeDocuments = useMemo(
+    () => (myDocuments ?? []).filter((doc: any) => doc.type === 'resume'),
+    [myDocuments],
+  )
 
   const customResumeTemplates = useMemo(
     () => (customTemplates ?? []).filter((template: any) => template.type === 'resume'),
@@ -542,16 +578,114 @@ function GenerateContent() {
     job.url.trim() || job.title.trim() || job.company.trim() || job.description.trim(),
   )
 
+  async function handleReviewFile(file: File | null) {
+    if (!file) return
+    say("")
+    setUploadNote("")
+
+    if (file.type !== "application/pdf") {
+      setUploadNote("PDF only — it is the format an applicant tracking system reads.")
+      return
+    }
+
+    setUploadFile(file)
+    setUploadText("")
+    setIsExtracting(true)
+    try {
+      const text = await extractTextFromPdf(file)
+      if (!text.trim()) {
+        setUploadFile(null)
+        setUploadNote(
+          "No selectable text — this PDF is scanned or image-only. Export a text PDF and try again.",
+        )
+        return
+      }
+      setUploadText(text)
+      const words = text.trim().split(/\s+/).filter(Boolean).length
+      setUploadNote(`${words.toLocaleString()} words read.`)
+    } catch (error) {
+      setUploadFile(null)
+      setUploadNote(
+        error instanceof Error ? error.message : "That PDF could not be read.",
+      )
+    } finally {
+      setIsExtracting(false)
+    }
+  }
+
+  async function onRunReview() {
+    const jobDescription = job.description.trim() || undefined
+
+    if (reviewSource === "document") {
+      if (!selectedDocId) {
+        say("Pick a résumé to review.", true)
+        return
+      }
+      setIsReviewing(true)
+      say("")
+      try {
+        await runReview({
+          documentId: selectedDocId as Id<"documents">,
+          jobDescription,
+        })
+        navigate({
+          to: "/editor/$documentId",
+          params: { documentId: selectedDocId },
+          search: { pane: "review" },
+        })
+      } catch (error) {
+        say(error instanceof Error ? error.message : "The review failed.", true)
+      } finally {
+        setIsReviewing(false)
+      }
+      return
+    }
+
+    if (!uploadFile || !uploadText.trim()) {
+      say("Choose a PDF to review.", true)
+      return
+    }
+
+    setIsReviewing(true)
+    say("")
+    try {
+      // The file is kept so the saved review can mark up the real page later.
+      const uploadUrl = await createUploadUrl({})
+      const upload = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": uploadFile.type },
+        body: uploadFile,
+      })
+      if (!upload.ok) throw new Error("That file could not be uploaded.")
+      const { storageId } = await upload.json()
+
+      const result = await runReview({
+        resumeText: uploadText,
+        storageId: storageId as Id<"_storage">,
+        label: uploadFile.name.replace(/\.pdf$/i, ""),
+        jobDescription,
+      })
+      navigate({
+        to: "/review/$reviewId",
+        params: { reviewId: result.reviewId },
+      })
+    } catch (error) {
+      say(error instanceof Error ? error.message : "The review failed.", true)
+    } finally {
+      setIsReviewing(false)
+    }
+  }
+
   async function onGenerate() {
     if (!profile?.personal?.fullName) {
-      setStatus("Complete your profile first.")
+      say("Complete your profile first.", true)
       return
     }
 
     const hasResume = resumeTemplateId !== "none"
     const hasCover = coverTemplateId !== "none"
     if (!hasResume && !hasCover) {
-      setStatus("Choose a résumé or a cover letter.")
+      say("Choose a résumé or a cover letter.", true)
       return
     }
 
@@ -577,9 +711,21 @@ function GenerateContent() {
         : coverTemplateId
 
     setIsGenerating(true)
-    setStatus("")
+    say("")
+    setLocalStep(null)
+
+    let activeRunId: Id<"generationRuns"> | null = null
+    try {
+      // Opened before the action so the client can watch it from the first step.
+      activeRunId = await startRun({})
+      setRunId(activeRunId)
+    } catch {
+      // Without a run the status falls back to elapsed time only.
+    }
+
     try {
       const result = await generate({
+        runId: activeRunId ?? undefined,
         // No posting means nothing to tailor to, and no job to track.
         job: hasJob ? job : undefined,
         documentType,
@@ -596,14 +742,27 @@ function GenerateContent() {
       }
 
       if (result.resumeId) {
+        setLocalStep("fitting")
         await enforceLength(result.resumeId as Id<"documents">)
       }
 
-      navigate({ to: "/editor/$documentId", params: { documentId: nextId } })
+      navigate({
+        to: "/editor/$documentId",
+        params: { documentId: nextId },
+        search: {},
+      })
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Generation failed.")
+      say(error instanceof Error ? error.message : "Generation failed.", true)
+      if (activeRunId) {
+        await markRun({
+          runId: activeRunId,
+          step: "error",
+          status: "error",
+        }).catch(() => {})
+      }
     } finally {
       setIsGenerating(false)
+      setLocalStep(null)
     }
   }
 
@@ -611,7 +770,7 @@ function GenerateContent() {
   async function enforceLength(documentId: Id<"documents">) {
     const maxPages = targetLength === "2_pages" ? 2 : 1
     try {
-      setStatus("Checking the page count…")
+      say("Checking the page count…")
       const doc = await convexClient.query(api.documents.getMyDocument, {
         documentId,
       })
@@ -652,7 +811,37 @@ function GenerateContent() {
     <Page>
       <PageHeader
         title="Generate"
-        description="Paste a posting, choose the templates, and get a tailored résumé and cover letter."
+        description={
+          mode === "write"
+            ? "Paste a posting, choose the templates, and get a tailored résumé and cover letter."
+            : "Score a résumé against the rubric a recruiter reads it with, and keep the notes."
+        }
+        actions={
+          <div
+            role="tablist"
+            aria-label="What to do"
+            className="flex items-center gap-0.5 rounded-md border border-slate-200 p-0.5 dark:border-slate-800"
+          >
+            <ModeTab
+              active={mode === "write"}
+              onClick={() => {
+                setMode("write")
+                say("")
+              }}
+            >
+              Write
+            </ModeTab>
+            <ModeTab
+              active={mode === "review"}
+              onClick={() => {
+                setMode("review")
+                say("")
+              }}
+            >
+              Review
+            </ModeTab>
+          </div>
+        }
       />
 
       {profileDoc === undefined ? (
@@ -674,14 +863,18 @@ function GenerateContent() {
         </Panel>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
-          <div className="space-y-4">
+          {/* Grid items default to min-width:auto and burst the track on a phone. */}
+          <div className="min-w-0 space-y-4">
              <Panel>
               <PanelHeader title="The posting" meta="Optional" />
               <div className="space-y-4 p-4">
                 <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                  Paste a posting to tailor the wording and ordering towards it.
-                  Leave it empty for a general document drawn from your profile.
+                  {mode === "write"
+                    ? "Paste a posting to tailor the wording and ordering towards it. Leave it empty for a general document drawn from your profile."
+                    : "A posting turns on the keyword score. Without one the other three still apply."}
                 </p>
+                {mode === "write" && (
+                  <>
                 <div className="space-y-2">
                   <Label htmlFor="jobTitle" className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Job Title</Label>
                   <Input
@@ -712,6 +905,8 @@ function GenerateContent() {
                      className="bg-white dark:bg-slate-950"
                   />
                 </div>
+                  </>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="jobDescription" className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Job Description</Label>
                   <Textarea
@@ -726,7 +921,24 @@ function GenerateContent() {
             </Panel>
           </div>
 
-          <div className="space-y-4">
+          <div className="min-w-0 space-y-4">
+            {mode === "review" ? (
+              <ReviewSetup
+                source={reviewSource}
+                onSource={(next) => {
+                  setReviewSource(next)
+                  say("")
+                }}
+                file={uploadFile}
+                note={uploadNote}
+                isExtracting={isExtracting}
+                onFile={handleReviewFile}
+                documents={resumeDocuments}
+                selectedDocId={selectedDocId}
+                onSelectDoc={setSelectedDocId}
+              />
+            ) : (
+              <>
             <Panel>
               <PanelHeader title="Templates" />
               <div className="space-y-4 p-4">
@@ -833,6 +1045,9 @@ function GenerateContent() {
                 </p>
               </div>
             </Panel>
+
+              </>
+            )}
           </div>
         </div>
       )}
@@ -866,28 +1081,48 @@ function GenerateContent() {
       />
 
       {profile?.personal?.fullName && (
-        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
+        <div className="border-t border-slate-200 pt-4 dark:border-slate-800">
+          {/* Real progress: the bar only moves when a section actually lands. */}
+          {isGenerating && (
+            <div
+              className="mb-3 h-px w-full bg-slate-200 dark:bg-slate-800"
+              role="presentation"
+            >
+              <div
+                className="h-px bg-slate-900 transition-[width] duration-500 ease-out motion-reduce:transition-none dark:bg-slate-100"
+                style={{
+                  width: `${Math.round(stepProgress(localStep ?? run?.step) * 100)}%`,
+                }}
+              />
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center justify-end gap-3">
           <span
             className="mr-auto text-[13px] text-slate-500 dark:text-slate-400"
             aria-live="polite"
           >
-            {isGenerating ? (
+            {isGenerating || isReviewing ? (
               <span className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                {progress.label}
+                {isReviewing
+                  ? "Reading the résumé…"
+                  : `${stepLabel(localStep ?? run?.step)}…`}
                 <span className="tabular-nums text-slate-400">
-                  {progress.elapsedLabel}
+                  {isReviewing ? reviewProgress.elapsedLabel : progress.elapsedLabel}
                 </span>
               </span>
             ) : status ? (
               <span
                 className={
-                  status.includes("failed") || status.includes("first")
-                    ? "text-rose-600 dark:text-rose-400"
-                    : undefined
+                  statusIsProblem ? "text-rose-600 dark:text-rose-400" : undefined
                 }
               >
                 {status}
               </span>
+            ) : mode === "review" ? (
+              hasJob
+                ? "Scored against the posting above."
+                : "No posting — the keyword score stays off."
             ) : hasJob ? (
               "Tailored to the posting above."
             ) : (
@@ -895,20 +1130,66 @@ function GenerateContent() {
             )}
           </span>
 
-          <button
-            type="button"
-            onClick={onGenerate}
-            disabled={
-              isGenerating ||
-              (resumeTemplateId === "none" && coverTemplateId === "none")
-            }
-            className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-slate-700 disabled:opacity-40 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
-          >
-            {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isGenerating ? "Generating…" : "Generate"}
-          </button>
+          {mode === "review" ? (
+            <button
+              type="button"
+              onClick={onRunReview}
+              disabled={
+                isReviewing ||
+                isExtracting ||
+                (reviewSource === "upload" ? !uploadText : !selectedDocId)
+              }
+              className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-slate-700 disabled:opacity-40 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+            >
+              {isReviewing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isReviewing ? "Reviewing…" : "Review"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onGenerate}
+              disabled={
+                isGenerating ||
+                (resumeTemplateId === "none" && coverTemplateId === "none")
+              }
+              className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-slate-700 disabled:opacity-40 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+            >
+              {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isGenerating ? "Generating…" : "Generate"}
+            </button>
+          )}
+          </div>
         </div>
       )}
     </Page>
   )
 }
+
+/** Two words, one control. Reads as a switch, not as a pair of buttons. */
+function ModeTab({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={cn(
+        'rounded px-2.5 py-1 text-[13px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-slate-900/15 motion-reduce:transition-none dark:focus-visible:ring-slate-100/25',
+        active
+          ? 'bg-slate-900 font-medium text-white dark:bg-slate-100 dark:text-slate-900'
+          : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100',
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+

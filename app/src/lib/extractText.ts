@@ -75,7 +75,7 @@ async function readPdfText(source: {
     const pageTexts: string[] = []
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i)
-      // Must match the text layer in roast.tsx, or highlight quotes stop matching.
+      // Must match the text layer in pdfHighlight.ts, or quotes stop matching.
       const textContent = await page.getTextContent({ disableNormalization: true })
       pageTexts.push(itemsToText(textContent.items as Array<Record<string, unknown>>))
     }

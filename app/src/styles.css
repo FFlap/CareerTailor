@@ -130,20 +130,48 @@
     background: #ffffff;
   }
 
-  .roast-pdf-page {
+  .review-pdf-page {
     position: relative;
+    background: #ffffff;
+    border: 1px solid rgb(226 232 240);
   }
 
-  .roast-pdf-page canvas {
+  .dark .review-pdf-page {
+    border-color: rgb(30 41 59);
+  }
+
+  .review-pdf-page canvas {
     display: block;
   }
 
-  .roast-highlight {
-    background: rgba(251, 191, 36, 0.6);
+  /* A flagged line is marked, not coloured in; the active one gets the rule. */
+  .review-highlight {
+    background: rgba(15, 23, 42, 0.14);
+    border-radius: 1px;
   }
 
-  .roast-highlight-active {
-    outline: 2px solid #f59e0b;
-    outline-offset: -1px;
+  .review-highlight-active {
+    background: rgba(15, 23, 42, 0.26);
+    box-shadow: 0 1px 0 0 rgb(15 23 42);
+  }
+
+  /* Jumping from a note to its field: say where you landed, then get out. */
+  .field-flash {
+    animation: field-flash 1.2s ease-out;
+  }
+
+  @keyframes field-flash {
+    from {
+      background-color: rgba(15, 23, 42, 0.06);
+    }
+    to {
+      background-color: transparent;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .field-flash {
+      animation: none;
+    }
   }
 }

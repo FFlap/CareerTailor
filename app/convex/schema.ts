@@ -124,6 +124,42 @@ export default defineSchema({
     .index("by_user_createdAt", ["userId", "createdAt"])
     .index("by_user_job_type", ["userId", "jobId", "type"]),
 
+  // Live status for one generation, so the client can watch it rather than
+  // guess from a timer. Short-lived: it exists for the length of the run.
+  generationRuns: defineTable({
+    userId: v.string(),
+    status: v.union(
+      v.literal("running"),
+      v.literal("done"),
+      v.literal("error"),
+    ),
+    step: v.string(),
+    error: v.optional(v.string()),
+    startedAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user_startedAt", ["userId", "startedAt"]),
+
+  // A saved critique. `document` reviews hang off a generated document and open
+  // in the editor; `upload` reviews keep their own PDF and open on their own.
+  reviews: defineTable({
+    userId: v.string(),
+    documentId: v.optional(v.id("documents")),
+    jobId: v.optional(v.id("jobs")),
+    source: v.union(v.literal("document"), v.literal("upload")),
+    label: v.string(),
+    storageId: v.optional(v.id("_storage")),
+    resumeText: v.string(),
+    jobDescription: v.optional(v.string()),
+    summary: v.string(),
+    overall: v.number(),
+    metrics: v.any(),
+    comments: v.any(),
+    llmModel: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_user_createdAt", ["userId", "createdAt"])
+    .index("by_user_document", ["userId", "documentId"]),
+
   userSettings: defineTable({
     userId: v.string(),
     defaultResumeTemplateId: v.string(),

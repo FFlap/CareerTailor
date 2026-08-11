@@ -1,14 +1,13 @@
 import { X } from 'lucide-react'
 import { createFileRoute } from '@tanstack/react-router'
-import { useEffect, useMemo, useRef, useState, type ClipboardEvent } from 'react'
-import { AuthLoading, useAction, useConvexAuth, useMutation, useQuery } from 'convex/react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { AuthLoading, useConvexAuth, useMutation, useQuery } from 'convex/react'
 
 import {
   renderTypstToCanvasInBrowser,
 } from '@/lib/typst/renderClient'
 import { api } from '@/lib/convex'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 import { Page, PageHeader, Panel, PanelHeader } from '@/components/ui/page'
 import SidebarLayout from '@/components/SidebarLayout'
 import { makeCustomTemplateId, withSampleData } from '@/lib/customTemplates'

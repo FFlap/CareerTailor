@@ -14,7 +14,6 @@ const NAV = [
   { to: "/generate", label: "Generate" },
   { to: "/job-applications", label: "Applications" },
   { to: "/templates", label: "Templates" },
-  { to: "/roast", label: "Roast" },
 ] as const;
 
 export default function Header() {

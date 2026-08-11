@@ -12,13 +12,13 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TemplatesRouteImport } from './routes/templates'
 import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as SignInRouteImport } from './routes/sign-in'
-import { Route as RoastRouteImport } from './routes/roast'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as JobApplicationsRouteImport } from './routes/job-applications'
 import { Route as GenerateRouteImport } from './routes/generate'
 import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ReviewReviewIdRouteImport } from './routes/review.$reviewId'
 import { Route as ExtensionConnectRouteImport } from './routes/extension.connect'
 import { Route as EditorDocumentIdRouteImport } from './routes/editor.$documentId'
 import { Route as ApiRenderTypstRouteImport } from './routes/api.render.typst'
@@ -36,11 +36,6 @@ const SignUpRoute = SignUpRouteImport.update({
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RoastRoute = RoastRouteImport.update({
-  id: '/roast',
-  path: '/roast',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileRoute = ProfileRouteImport.update({
@@ -73,6 +68,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReviewReviewIdRoute = ReviewReviewIdRouteImport.update({
+  id: '/review/$reviewId',
+  path: '/review/$reviewId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ExtensionConnectRoute = ExtensionConnectRouteImport.update({
   id: '/extension/connect',
   path: '/extension/connect',
@@ -96,12 +96,12 @@ export interface FileRoutesByFullPath {
   '/generate': typeof GenerateRoute
   '/job-applications': typeof JobApplicationsRoute
   '/profile': typeof ProfileRoute
-  '/roast': typeof RoastRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/templates': typeof TemplatesRoute
   '/editor/$documentId': typeof EditorDocumentIdRoute
   '/extension/connect': typeof ExtensionConnectRoute
+  '/review/$reviewId': typeof ReviewReviewIdRoute
   '/api/render/typst': typeof ApiRenderTypstRoute
 }
 export interface FileRoutesByTo {
@@ -111,12 +111,12 @@ export interface FileRoutesByTo {
   '/generate': typeof GenerateRoute
   '/job-applications': typeof JobApplicationsRoute
   '/profile': typeof ProfileRoute
-  '/roast': typeof RoastRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/templates': typeof TemplatesRoute
   '/editor/$documentId': typeof EditorDocumentIdRoute
   '/extension/connect': typeof ExtensionConnectRoute
+  '/review/$reviewId': typeof ReviewReviewIdRoute
   '/api/render/typst': typeof ApiRenderTypstRoute
 }
 export interface FileRoutesById {
@@ -127,12 +127,12 @@ export interface FileRoutesById {
   '/generate': typeof GenerateRoute
   '/job-applications': typeof JobApplicationsRoute
   '/profile': typeof ProfileRoute
-  '/roast': typeof RoastRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/templates': typeof TemplatesRoute
   '/editor/$documentId': typeof EditorDocumentIdRoute
   '/extension/connect': typeof ExtensionConnectRoute
+  '/review/$reviewId': typeof ReviewReviewIdRoute
   '/api/render/typst': typeof ApiRenderTypstRoute
 }
 export interface FileRouteTypes {
@@ -144,12 +144,12 @@ export interface FileRouteTypes {
     | '/generate'
     | '/job-applications'
     | '/profile'
-    | '/roast'
     | '/sign-in'
     | '/sign-up'
     | '/templates'
     | '/editor/$documentId'
     | '/extension/connect'
+    | '/review/$reviewId'
     | '/api/render/typst'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -159,12 +159,12 @@ export interface FileRouteTypes {
     | '/generate'
     | '/job-applications'
     | '/profile'
-    | '/roast'
     | '/sign-in'
     | '/sign-up'
     | '/templates'
     | '/editor/$documentId'
     | '/extension/connect'
+    | '/review/$reviewId'
     | '/api/render/typst'
   id:
     | '__root__'
@@ -174,12 +174,12 @@ export interface FileRouteTypes {
     | '/generate'
     | '/job-applications'
     | '/profile'
-    | '/roast'
     | '/sign-in'
     | '/sign-up'
     | '/templates'
     | '/editor/$documentId'
     | '/extension/connect'
+    | '/review/$reviewId'
     | '/api/render/typst'
   fileRoutesById: FileRoutesById
 }
@@ -190,12 +190,12 @@ export interface RootRouteChildren {
   GenerateRoute: typeof GenerateRoute
   JobApplicationsRoute: typeof JobApplicationsRoute
   ProfileRoute: typeof ProfileRoute
-  RoastRoute: typeof RoastRoute
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
   TemplatesRoute: typeof TemplatesRoute
   EditorDocumentIdRoute: typeof EditorDocumentIdRoute
   ExtensionConnectRoute: typeof ExtensionConnectRoute
+  ReviewReviewIdRoute: typeof ReviewReviewIdRoute
   ApiRenderTypstRoute: typeof ApiRenderTypstRoute
 }
 
@@ -220,13 +220,6 @@ declare module '@tanstack/react-router' {
       path: '/sign-in'
       fullPath: '/sign-in'
       preLoaderRoute: typeof SignInRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/roast': {
-      id: '/roast'
-      path: '/roast'
-      fullPath: '/roast'
-      preLoaderRoute: typeof RoastRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile': {
@@ -271,6 +264,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/review/$reviewId': {
+      id: '/review/$reviewId'
+      path: '/review/$reviewId'
+      fullPath: '/review/$reviewId'
+      preLoaderRoute: typeof ReviewReviewIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/extension/connect': {
       id: '/extension/connect'
       path: '/extension/connect'
@@ -302,12 +302,12 @@ const rootRouteChildren: RootRouteChildren = {
   GenerateRoute: GenerateRoute,
   JobApplicationsRoute: JobApplicationsRoute,
   ProfileRoute: ProfileRoute,
-  RoastRoute: RoastRoute,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
   TemplatesRoute: TemplatesRoute,
   EditorDocumentIdRoute: EditorDocumentIdRoute,
   ExtensionConnectRoute: ExtensionConnectRoute,
+  ReviewReviewIdRoute: ReviewReviewIdRoute,
   ApiRenderTypstRoute: ApiRenderTypstRoute,
 }
 export const routeTree = rootRouteImport

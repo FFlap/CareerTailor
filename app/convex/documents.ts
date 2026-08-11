@@ -20,7 +20,9 @@ export const getMyDocument = query({
     if (!doc || doc.userId !== userId) {
       return null;
     }
-    return doc;
+    // The job is what names a document; nothing on the row itself does.
+    const job = doc.jobId ? await ctx.db.get(doc.jobId) : null;
+    return { ...doc, job: job && job.userId === userId ? job : null };
   },
 });
 

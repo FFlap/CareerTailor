@@ -1,9 +1,10 @@
-import { action } from "./_generated/server";
+import { action, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { makeFunctionReference } from "convex/server";
 
 import { requireUserId } from "./lib/auth";
-import { callChatModel, safeJsonParse } from "./lib/llm";
+import { callChatModel, callChatModelStreaming, safeJsonParse } from "./lib/llm";
+import { detectResumeStep } from "./lib/progress";
 import { DEFAULT_MODEL, modelIdValidator } from "./lib/models";
 import {
   coverLetterPreferenceInstructions,
@@ -35,6 +36,57 @@ const preferencesInput = v.object({
   targetLength: v.string(),
 });
 
+/** The client opens a run, then hands its id to the action and watches it. */
+export const startRun = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await requireUserId(ctx);
+    const now = Date.now();
+    return await ctx.db.insert("generationRuns", {
+      userId,
+      status: "running",
+      step: "profile",
+      startedAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
+export const markRun = mutation({
+  args: {
+    runId: v.id("generationRuns"),
+    step: v.string(),
+    status: v.optional(
+      v.union(v.literal("running"), v.literal("done"), v.literal("error")),
+    ),
+    error: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
+    const run = await ctx.db.get(args.runId);
+    // A run that vanished must never take the generation down with it.
+    if (!run || run.userId !== userId) return null;
+    await ctx.db.patch(args.runId, {
+      step: args.step,
+      status: args.status ?? run.status,
+      error: args.error,
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+export const runStatus = query({
+  args: { runId: v.id("generationRuns") },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
+    const run = await ctx.db.get(args.runId);
+    if (!run || run.userId !== userId) return null;
+    return run;
+  },
+});
+
+const markRunRef = makeFunctionReference<"mutation">("generation:markRun");
 const myProfileRef = makeFunctionReference<"query">("profiles:myProfile");
 const upsertMyJobRef = makeFunctionReference<"mutation">("jobs:upsertMyJob");
 const createGeneratedDocumentRef = makeFunctionReference<"mutation">(
@@ -58,11 +110,24 @@ export const generateDocuments = action({
     customCoverTemplateId: v.optional(v.id("customTemplates")),
     model: v.optional(modelIdValidator),
     preferences: preferencesInput,
+    runId: v.optional(v.id("generationRuns")),
   },
   handler: async (ctx, args) => {
     await requireUserId(ctx);
 
     const model = args.model ?? DEFAULT_MODEL;
+
+    let lastStep = "";
+    async function report(step: string, status?: "running" | "done" | "error") {
+      if (!args.runId) return;
+      if (step === lastStep && !status) return;
+      lastStep = step;
+      try {
+        await ctx.runMutation(markRunRef, { runId: args.runId, step, status });
+      } catch {
+        // Status is a convenience; never let it fail the generation.
+      }
+    }
 
     const profileDoc = await ctx.runQuery(myProfileRef, {});
     const profile = (profileDoc as any)?.profile;
@@ -190,11 +255,17 @@ export const generateDocuments = action({
         `Input: ${JSON.stringify(baseInput)}`,
       ].join("\n");
 
-      const raw = await callChatModel({
+      const raw = await callChatModelStreaming({
         model,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         maxTokens: 4096,
+        // Section keys arrive in schema order, so the newest one is the one
+        // being written right now.
+        onProgress: async (accumulated) => {
+          const step = detectResumeStep(accumulated);
+          if (step) await report(step);
+        },
       });
       const parsed = parseModelJson(raw, "resume") as any;
       const resume = normalizeGeneratedResume(
@@ -233,6 +304,7 @@ export const generateDocuments = action({
     }
 
     if (args.documentType === "cover_letter" || args.documentType === "both") {
+      await report("cover");
       let customCoverSource: string | null = null;
       if (args.customCoverTemplateId) {
         const customTemplate = await ctx.runQuery(getMyTemplateRef, {
@@ -309,6 +381,7 @@ export const generateDocuments = action({
       documents.coverId = coverDocId as any;
     }
 
+    await report("done", "done");
     return { jobId, ...documents };
   },
 });

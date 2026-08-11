@@ -1,3 +1,5 @@
+import type { Id } from '../../convex/_generated/dataModel'
+
 export const CUSTOM_TEMPLATE_PREFIX = 'custom:'
 
 export function makeCustomTemplateId(id: string) {
@@ -8,8 +10,12 @@ export function isCustomTemplateId(id?: string | null): id is `custom:${string}`
   return Boolean(id && id.startsWith(CUSTOM_TEMPLATE_PREFIX))
 }
 
-export function extractCustomTemplateId(id: string) {
-  return id.startsWith(CUSTOM_TEMPLATE_PREFIX) ? id.slice(CUSTOM_TEMPLATE_PREFIX.length) : id
+/** The bare document id behind a `custom:<id>` selection. */
+export function extractCustomTemplateId(id: string): Id<'customTemplates'> {
+  const bare = id.startsWith(CUSTOM_TEMPLATE_PREFIX)
+    ? id.slice(CUSTOM_TEMPLATE_PREFIX.length)
+    : id
+  return bare as Id<'customTemplates'>
 }
 
 const SAMPLE_RESUME_PREAMBLE = `#let resume = (

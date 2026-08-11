@@ -62,7 +62,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     '/generate',
     '/job-applications',
     '/gallery',
-    '/roast',
+    '/review/',
     '/templates',
     '/profile',
   ]

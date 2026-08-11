@@ -299,12 +299,12 @@ describeLive('length changes', () => {
   }, 300_000)
 })
 
-describeLive('scoring (roast)', () => {
+describeLive('scoring (review)', () => {
   let result: any
 
   beforeAll(async () => {
     const systemPrompt = [
-      'You are a brutally honest resume reviewer.',
+      'You are a senior technical recruiter reviewing a résumé.',
       'Scoring must be objective and rubric-based.',
       'Scores must be between 0 and 100 (inclusive).',
       'Return ONLY valid JSON with the schema provided.',
@@ -316,9 +316,10 @@ describeLive('scoring (roast)', () => {
       'Return JSON exactly matching this schema:',
       '{"summary": string, "metrics": {"ats": {"score": number, "note": string},',
       '"readability": {"score": number, "note": string},',
-      '"xyz": {"score": number, "note": string},',
+      '"impact": {"score": number, "note": string},',
       '"keywords": {"score": number|null, "note": string}},',
-      '"comments": [{"id": number, "quote": string, "comment": string, "severity": "mild"|"spicy"}]}',
+      '"comments": [{"id": number, "quote": string, "section": string,',
+      '"severity": "minor"|"major", "comment": string, "fix": string}]}',
       '',
       'Provide at least 6 comments.',
       '',
@@ -343,14 +344,14 @@ describeLive('scoring (roast)', () => {
   }, 300_000)
 
   it('returns all four metrics', () => {
-    for (const metric of ['ats', 'readability', 'xyz', 'keywords']) {
+    for (const metric of ['ats', 'readability', 'impact', 'keywords']) {
       expect(result.metrics[metric]).toBeTruthy()
       expect(typeof result.metrics[metric].note).toBe('string')
     }
   })
 
   it('keeps scores inside 0-100', () => {
-    for (const metric of ['ats', 'readability', 'xyz']) {
+    for (const metric of ['ats', 'readability', 'impact']) {
       const score = result.metrics[metric].score
       expect(typeof score).toBe('number')
       expect(score).toBeGreaterThanOrEqual(0)
@@ -368,7 +369,8 @@ describeLive('scoring (roast)', () => {
     for (const comment of result.comments) {
       expect(typeof comment.comment).toBe('string')
       expect(comment.comment.length).toBeGreaterThan(10)
-      expect(['mild', 'spicy']).toContain(comment.severity)
+      expect(['minor', 'major']).toContain(comment.severity)
+      expect(typeof comment.fix).toBe('string')
     }
   })
 

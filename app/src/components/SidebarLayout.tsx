@@ -3,7 +3,6 @@ import { Link } from "@tanstack/react-router";
 import {
   Briefcase,
   FileText,
-  Flame,
   LayoutDashboard,
   LayoutTemplate,
   LogIn,
@@ -25,7 +24,6 @@ const NAV = [
   { to: "/generate", label: "Generate", icon: Sparkles },
   { to: "/job-applications", label: "Applications", icon: Briefcase },
   { to: "/gallery", label: "Documents", icon: FileText },
-  { to: "/roast", label: "Roast", icon: Flame },
   { to: "/templates", label: "Templates", icon: LayoutTemplate },
   { to: "/profile", label: "Profile", icon: UserRound },
 ] as const;
