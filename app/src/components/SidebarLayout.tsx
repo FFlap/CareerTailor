@@ -23,7 +23,7 @@ const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/generate", label: "Generate", icon: Sparkles },
   { to: "/job-applications", label: "Applications", icon: Briefcase },
-  { to: "/gallery", label: "Documents", icon: FileText },
+  { to: "/documents", label: "Documents", icon: FileText },
   { to: "/templates", label: "Templates", icon: LayoutTemplate },
   { to: "/profile", label: "Profile", icon: UserRound },
 ] as const;

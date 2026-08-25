@@ -117,12 +117,16 @@ export default defineSchema({
     data: v.any(),
     typstSource: v.string(),
     sourceEditedAt: v.optional(v.number()),
+    // Kept out of the recent window: a starred document is reachable however
+    // long ago it was written.
+    favorite: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_user_type_createdAt", ["userId", "type", "createdAt"])
     .index("by_user_createdAt", ["userId", "createdAt"])
-    .index("by_user_job_type", ["userId", "jobId", "type"]),
+    .index("by_user_job_type", ["userId", "jobId", "type"])
+    .index("by_user_favorite", ["userId", "favorite"]),
 
   // Live status for one generation, so the client can watch it rather than
   // guess from a timer. Short-lived: it exists for the length of the run.
@@ -155,10 +159,12 @@ export default defineSchema({
     metrics: v.any(),
     comments: v.any(),
     llmModel: v.string(),
+    favorite: v.optional(v.boolean()),
     createdAt: v.number(),
   })
     .index("by_user_createdAt", ["userId", "createdAt"])
-    .index("by_user_document", ["userId", "documentId"]),
+    .index("by_user_document", ["userId", "documentId"])
+    .index("by_user_favorite", ["userId", "favorite"]),
 
   userSettings: defineTable({
     userId: v.string(),

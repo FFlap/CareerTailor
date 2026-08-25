@@ -66,6 +66,51 @@ export const listMyRecentDocuments = query({
   },
 });
 
+/**
+ * Starred documents, whatever their age. The recent window would drop them
+ * once enough newer work piled up, which defeats the point of starring one.
+ */
+export const listMyFavoriteDocuments = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
+    const docs = await ctx.db
+      .query("documents")
+      .withIndex("by_user_favorite", (q) =>
+        q.eq("userId", userId).eq("favorite", true),
+      )
+      // Newest first, so a cap trims the oldest rather than the current work.
+      .order("desc")
+      .take(args.limit ?? 60);
+
+    const jobs = await Promise.all(
+      docs.map((doc) => (doc.jobId ? ctx.db.get(doc.jobId) : null)),
+    );
+    return docs
+      .map((doc, idx) => {
+        const job = jobs[idx];
+        return { ...doc, job: job && job.userId === userId ? job : null };
+      })
+      .sort((a, b) => (b.updatedAt ?? b.createdAt) - (a.updatedAt ?? a.createdAt));
+  },
+});
+
+export const setMyDocumentFavorite = mutation({
+  args: { documentId: v.id("documents"), favorite: v.boolean() },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
+    const doc = await ctx.db.get(args.documentId);
+    if (!doc || doc.userId !== userId) {
+      throw new Error("Not found.");
+    }
+    // Starring is not an edit of the document, so `updatedAt` stays put.
+    await ctx.db.patch(args.documentId, {
+      favorite: args.favorite ? true : undefined,
+    });
+    return { favorite: args.favorite };
+  },
+});
+
 export const updateMyTypstSource = mutation({
   args: { documentId: v.id("documents"), typstSource: v.string() },
   handler: async (ctx, args) => {

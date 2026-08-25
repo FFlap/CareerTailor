@@ -293,6 +293,40 @@ export async function renderTypstToCanvasInBrowser(
   });
 }
 
+/**
+ * The first page alone, as an image. The renderer only sizes canvases when it
+ * lays out a whole document, so the document is rendered into an offscreen host
+ * and everything after page one is discarded.
+ */
+export async function renderTypstFirstPageToDataUrl(
+  input: RenderInput & { pixelPerPt?: number },
+): Promise<string> {
+  if (typeof document === "undefined") {
+    throw new Error("Thumbnails can only be rendered in the browser.");
+  }
+
+  const host = document.createElement("div");
+  host.setAttribute("aria-hidden", "true");
+  host.style.cssText =
+    "position:fixed;left:-10000px;top:0;width:640px;pointer-events:none;";
+  document.body.appendChild(host);
+
+  try {
+    await renderTypstToCanvasInBrowser({
+      source: input.source,
+      documentType: input.documentType,
+      templateId: input.templateId,
+      container: host,
+      pixelPerPt: input.pixelPerPt ?? 1,
+    });
+    const canvas = host.querySelector("canvas");
+    if (!canvas) throw new Error("Typst produced no page.");
+    return canvas.toDataURL("image/webp", 0.82);
+  } finally {
+    host.remove();
+  }
+}
+
 function normalizeTypstSource(source: string) {
   return source
     .replace(/"Source Sans Pro"/gi, '"New Computer Modern"')

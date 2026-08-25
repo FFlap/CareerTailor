@@ -156,7 +156,7 @@ function ReviewContent() {
     setIsDeleting(true);
     try {
       await deleteReview({ reviewId: review._id });
-      navigate({ to: "/gallery" });
+      navigate({ to: "/documents" });
     } finally {
       setIsDeleting(false);
     }
@@ -177,7 +177,7 @@ function ReviewContent() {
           This review is gone.
         </p>
         <Link
-          to="/gallery"
+          to="/documents"
           className="text-[13px] text-slate-500 underline decoration-slate-300 underline-offset-4 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
         >
           Back to documents
@@ -191,7 +191,7 @@ function ReviewContent() {
       <header className="shrink-0 border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
         <div className="mx-auto flex h-14 max-w-[1800px] items-center gap-4 px-4 sm:px-6">
           <Link
-            to="/gallery"
+            to="/documents"
             className="hidden shrink-0 items-center gap-1.5 text-xs text-slate-500 outline-none transition-colors hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-slate-900/15 dark:text-slate-400 dark:hover:text-slate-100 md:flex"
           >
             <ArrowLeft className="h-3.5 w-3.5" />

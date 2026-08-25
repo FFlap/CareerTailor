@@ -505,7 +505,7 @@ function DashboardBody({
                 title="Recent documents"
                 actions={
                   <Link
-                    to="/gallery"
+                    to="/documents"
                     className="rounded px-2 py-1 text-xs text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
                   >
                     All

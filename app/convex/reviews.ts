@@ -169,16 +169,73 @@ export const listMyReviews = query({
       reviews.map((review) => (review.jobId ? ctx.db.get(review.jobId) : null)),
     )
 
+    // An uploaded review is only a PDF here, so a list needs its URL to show
+    // the first page.
+    const fileUrls = await Promise.all(
+      reviews.map((review) =>
+        review.storageId ? ctx.storage.getUrl(review.storageId) : null,
+      ),
+    )
+
     // The list only needs the scores; the comments can stay on the record.
     return reviews.map((review, index) => {
       const job = jobs[index]
       const { comments, resumeText, ...rest } = review
       return {
         ...rest,
+        fileUrl: fileUrls[index],
         commentCount: Array.isArray(comments) ? comments.length : 0,
         job: job && job.userId === userId ? job : null,
       }
     })
+  },
+})
+
+/** Starred uploads, kept reachable past the recent window. */
+export const listMyFavoriteReviews = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx)
+    const reviews = await ctx.db
+      .query('reviews')
+      .withIndex('by_user_favorite', (q) =>
+        q.eq('userId', userId).eq('favorite', true),
+      )
+      // Newest first, so a cap trims the oldest rather than the current work.
+      .order('desc')
+      .take(args.limit ?? 60)
+
+    const fileUrls = await Promise.all(
+      reviews.map((review) =>
+        review.storageId ? ctx.storage.getUrl(review.storageId) : null,
+      ),
+    )
+
+    return reviews
+      .map((review, index) => {
+        const { comments, resumeText, ...rest } = review
+        return {
+          ...rest,
+          fileUrl: fileUrls[index],
+          commentCount: Array.isArray(comments) ? comments.length : 0,
+        }
+      })
+      .sort((a, b) => b.createdAt - a.createdAt)
+  },
+})
+
+export const setMyReviewFavorite = mutation({
+  args: { reviewId: v.id('reviews'), favorite: v.boolean() },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx)
+    const review = await ctx.db.get(args.reviewId)
+    if (!review || review.userId !== userId) {
+      throw new Error('Not found.')
+    }
+    await ctx.db.patch(args.reviewId, {
+      favorite: args.favorite ? true : undefined,
+    })
+    return { favorite: args.favorite }
   },
 })
 

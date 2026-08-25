@@ -59,6 +59,7 @@ export function Pagination({
   total,
   noun,
   onPage,
+  className,
 }: {
   page: number;
   pageCount: number;
@@ -68,6 +69,8 @@ export function Pagination({
   /** Singular; pluralised with a trailing s. */
   noun: string;
   onPage: (page: number) => void;
+  /** For a pager that sits on the page rather than inside a panel. */
+  className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const previous = useRef(page);
@@ -92,7 +95,10 @@ export function Pagination({
   return (
     <div
       ref={ref}
-      className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-slate-200 px-4 py-2.5 dark:border-slate-800"
+      className={cn(
+        "flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-slate-200 px-4 py-2.5 dark:border-slate-800",
+        className,
+      )}
     >
       <p className="text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
         {from}–{to} of {total} {total === 1 ? noun : `${noun}s`}
