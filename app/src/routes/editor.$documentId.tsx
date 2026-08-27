@@ -44,10 +44,12 @@ import {
   locateQuote,
   type ReviewComment,
 } from "@/components/review/model";
+import { EditorPanesSkeleton, EditorSkeleton } from "@/components/skeletons";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/convex";
 import type { PdfPages } from "@/lib/pdfHighlight";
+import { useCachedQuery } from "@/lib/useCachedQuery";
 import { cn } from "@/lib/utils";
 
 type PaneKey = "fields" | "source" | "review";
@@ -64,9 +66,7 @@ function EditorPage() {
   return (
     <main className="min-h-screen bg-slate-50 font-sans text-slate-900 dark:bg-slate-900 dark:text-slate-100">
       <AuthLoading>
-        <div className="flex h-screen items-center justify-center">
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        </div>
+        <EditorSkeleton />
       </AuthLoading>
 
       <Unauthenticated>
@@ -87,7 +87,7 @@ function EditorPage() {
 function EditorContent() {
   const { documentId } = Route.useParams();
   const { pane } = Route.useSearch();
-  const doc = useQuery(api.documents.getMyDocument, {
+  const doc = useCachedQuery(api.documents.getMyDocument, {
     documentId: documentId as Id<"documents">,
   });
   const updateTypstSource = useMutation(api.documents.updateMyTypstSource);
@@ -726,9 +726,7 @@ function EditorContent() {
       </header>
 
       {!doc ? (
-        <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-          Loading…
-        </div>
+        <EditorPanesSkeleton />
       ) : (
         <div className="flex min-h-0 flex-1 gap-px bg-slate-200 dark:bg-slate-800">
           <section className="flex min-h-0 w-full flex-col bg-white lg:w-[46%] lg:min-w-[26rem] dark:bg-slate-950">

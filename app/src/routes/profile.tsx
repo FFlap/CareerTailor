@@ -13,6 +13,7 @@ import { templateSections } from "../../convex/lib/templates";
 
 import { ResumeDropZone } from "@/components/ResumeDropZone";
 import SidebarLayout from "@/components/SidebarLayout";
+import { ProfileSkeleton } from "@/components/skeletons";
 import { Meta } from "@/components/editor/primitives";
 import { ResumeFields } from "@/components/editor/ResumeFields";
 import {
@@ -33,6 +34,7 @@ import { extractTextFromResume } from "@/lib/extractText";
 import { DEFAULT_MODEL } from "@/lib/models";
 import { isAcceptedMimeType, type ResumeUploadState } from "@/lib/resumeUpload";
 import { cn } from "@/lib/utils";
+import { NO_ARGS } from "@/lib/warmQueries";
 
 export const Route = createFileRoute("/profile")({
   component: ProfilePage,
@@ -43,11 +45,7 @@ function ProfilePage() {
     <SidebarLayout>
       <div className="mx-auto w-full max-w-4xl px-5 py-8 sm:px-8">
         <AuthLoading>
-          <div className="flex justify-center py-12">
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Loading profile…
-            </p>
-          </div>
+          <ProfileSkeleton />
         </AuthLoading>
 
         <Unauthenticated>
@@ -98,7 +96,7 @@ function mergeParsedResume(existing: ResumeData, parsed: any): ResumeData {
 }
 
 function ProfileContent() {
-  const profileDoc = useQuery(api.profiles.myProfile, {});
+  const profileDoc = useQuery(api.profiles.myProfile, NO_ARGS);
   const upsert = useMutation(api.profiles.upsertMyProfile);
   const parseResume = useAction(api.resumeParsing.parseResumeText);
 
@@ -182,7 +180,7 @@ function ProfileContent() {
     }
   }
 
-  if (profileDoc === undefined) return null;
+  if (profileDoc === undefined) return <ProfileSkeleton />;
 
   return (
     <div>

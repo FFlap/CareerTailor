@@ -13,18 +13,22 @@ import { Search, X } from "lucide-react";
 import { api } from "@/lib/convex";
 import type { Id } from "../../convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
+import { JOBS_ARGS } from "@/lib/warmQueries";
 import SidebarLayout from "@/components/SidebarLayout";
 import {
   JOB_STAGES,
   JobList,
   JobListHeader,
-  JobListSkeleton,
   JobRow,
   jobStatusOf,
   type JobStatus,
 } from "@/components/JobList";
 import { EmptyState, Page, PageHeader, Panel } from "@/components/ui/page";
 import { Pagination, usePagination } from "@/components/ui/pagination";
+import {
+  ApplicationsSkeleton,
+  JobListSkeleton,
+} from "@/components/skeletons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,11 +44,9 @@ function JobApplicationsPage() {
   return (
     <>
       <AuthLoading>
-        <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-900">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Loading...
-          </p>
-        </div>
+        <SidebarLayout>
+          <ApplicationsSkeleton />
+        </SidebarLayout>
       </AuthLoading>
 
       <Unauthenticated>
@@ -119,7 +121,7 @@ function StageTab({
 }
 
 function JobApplicationsContent() {
-  const jobs = useQuery(api.jobs.listMyJobs, { limit: 100 });
+  const jobs = useQuery(api.jobs.listMyJobs, JOBS_ARGS);
   const setJobStatus = useMutation(api.jobs.setJobStatus);
   const upsertJob = useMutation(api.jobs.upsertMyJob);
   const canUseDom = typeof document !== "undefined";

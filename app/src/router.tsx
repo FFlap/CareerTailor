@@ -10,6 +10,8 @@ export const getRouter = () => {
     context: {},
 
     scrollRestoration: true,
+    defaultPreload: 'intent',
+    defaultPreloadDelay: 40,
     defaultPreloadStaleTime: 0,
   })
 

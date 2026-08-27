@@ -9,7 +9,6 @@ import {
 import { Star } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
-import { PageSkeleton } from "@/components/PageThumbnail";
 import {
   Shelf,
   ShelfLabel,
@@ -17,11 +16,13 @@ import {
   type DocumentEntry,
 } from "@/components/documents/tiles";
 import SidebarLayout from "@/components/SidebarLayout";
+import { DocumentTilesSkeleton, DocumentsSkeleton } from "@/components/skeletons";
 import { EmptyState, Page, PageHeader } from "@/components/ui/page";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { api } from "@/lib/convex";
 import { renderPdfFirstPageToDataUrl } from "@/lib/thumbnails";
 import { cn } from "@/lib/utils";
+import { DOCUMENTS_ARGS, NO_ARGS, REVIEWS_ARGS } from "@/lib/warmQueries";
 
 export const Route = createFileRoute("/documents")({
   component: DocumentsPage,
@@ -33,9 +34,7 @@ function DocumentsPage() {
     <>
       <AuthLoading>
         <SidebarLayout>
-          <Page>
-            <p className="text-sm text-slate-500">Loading…</p>
-          </Page>
+          <DocumentsSkeleton />
         </SidebarLayout>
       </AuthLoading>
 
@@ -75,14 +74,15 @@ const KIND_LABELS: Record<Kind, string> = {
 
 function DocumentsContent() {
   // Paging means a longer window costs nothing to render.
-  const documents = useQuery(api.documents.listMyRecentDocuments, {
-    limit: 100,
-  });
+  const documents = useQuery(api.documents.listMyRecentDocuments, DOCUMENTS_ARGS);
   // An upload that was reviewed has no document behind it; it is its own tile.
-  const reviews = useQuery(api.reviews.listMyReviews, { limit: 100 });
+  const reviews = useQuery(api.reviews.listMyReviews, REVIEWS_ARGS);
   // Starred work outlives the recent window, so it is fetched on its own.
-  const favoriteDocuments = useQuery(api.documents.listMyFavoriteDocuments, {});
-  const favoriteReviews = useQuery(api.reviews.listMyFavoriteReviews, {});
+  const favoriteDocuments = useQuery(
+    api.documents.listMyFavoriteDocuments,
+    NO_ARGS,
+  );
+  const favoriteReviews = useQuery(api.reviews.listMyFavoriteReviews, NO_ARGS);
 
   const setDocumentFavorite = useMutation(api.documents.setMyDocumentFavorite);
   const setReviewFavorite = useMutation(api.reviews.setMyReviewFavorite);
@@ -233,7 +233,7 @@ function DocumentsContent() {
         />
 
         {loading ? (
-          <LoadingShelf />
+          <DocumentTilesSkeleton />
         ) : filtered.length === 0 ? (
           <EmptyState
             className="border-t border-slate-200 pt-16 dark:border-slate-800"
@@ -341,23 +341,4 @@ function dedupe(preferred: any[] | undefined, rest: any[] | undefined) {
   for (const row of preferred ?? []) byId.set(row._id, row);
   for (const row of rest ?? []) if (!byId.has(row._id)) byId.set(row._id, row);
   return [...byId.values()];
-}
-
-function LoadingShelf() {
-  return (
-    <div>
-      <ShelfLabel label="Recent" />
-      <Shelf>
-        {Array.from({ length: 8 }, (_, index) => (
-          <li key={index}>
-            <div className="relative aspect-[17/22] overflow-hidden rounded-[3px] border border-slate-200 bg-white dark:border-slate-700">
-              <PageSkeleton shape="resume" seed={`skeleton-${index}`} settled={false} />
-            </div>
-            <div className="mt-3 h-2.5 w-3/4 rounded-[1px] bg-slate-100 dark:bg-slate-800" />
-            <div className="mt-2 h-2 w-1/2 rounded-[1px] bg-slate-100 dark:bg-slate-800" />
-          </li>
-        ))}
-      </Shelf>
-    </div>
-  );
 }

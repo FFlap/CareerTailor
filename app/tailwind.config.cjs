@@ -10,6 +10,14 @@ module.exports = {
         // Code only — never labels, meta, or numbers in the interface.
         mono: ['"JetBrains Mono"', "ui-monospace", "monospace"],
       },
+      keyframes: {
+        shimmer: {
+          "100%": { transform: "translateX(100%)" },
+        },
+      },
+      animation: {
+        shimmer: "shimmer 1.5s ease-in-out infinite",
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",

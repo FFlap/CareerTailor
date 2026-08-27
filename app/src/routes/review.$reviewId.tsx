@@ -5,7 +5,6 @@ import {
   AuthLoading,
   Unauthenticated,
   useMutation,
-  useQuery,
 } from "convex/react";
 import { ArrowLeft, Download, FileText, Loader2, Moon, Sun } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -19,6 +18,7 @@ import {
   scoreVerdict,
   type ReviewComment,
 } from "@/components/review/model";
+import { ReviewSkeleton } from "@/components/skeletons";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/convex";
 import {
@@ -28,6 +28,7 @@ import {
   scrollToComment,
   type PdfPages,
 } from "@/lib/pdfHighlight";
+import { useCachedQuery } from "@/lib/useCachedQuery";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/review/$reviewId")({
@@ -38,9 +39,7 @@ function ReviewRoute() {
   return (
     <main className="min-h-screen bg-slate-50 font-sans text-slate-900 dark:bg-slate-900 dark:text-slate-100">
       <AuthLoading>
-        <div className="flex h-screen items-center justify-center">
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        </div>
+        <ReviewSkeleton />
       </AuthLoading>
 
       <Unauthenticated>
@@ -62,7 +61,7 @@ function ReviewContent() {
   const { reviewId } = Route.useParams();
   const navigate = useNavigate();
   const { isSignedIn } = useAuth();
-  const review = useQuery(api.reviews.getMyReview, {
+  const review = useCachedQuery(api.reviews.getMyReview, {
     reviewId: reviewId as Id<"reviews">,
   });
   const deleteReview = useMutation(api.reviews.deleteMyReview);
@@ -162,13 +161,7 @@ function ReviewContent() {
     }
   }, [deleteReview, navigate, review]);
 
-  if (review === undefined) {
-    return (
-      <div className="flex h-screen items-center justify-center text-sm text-muted-foreground">
-        Loading…
-      </div>
-    );
-  }
+  if (review === undefined) return <ReviewSkeleton />;
 
   if (review === null) {
     return (

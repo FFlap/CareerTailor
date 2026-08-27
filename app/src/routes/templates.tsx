@@ -9,7 +9,10 @@ import {
 import { api } from '@/lib/convex'
 import { cn } from '@/lib/utils'
 import { Page, PageHeader, Panel, PanelHeader } from '@/components/ui/page'
+import { Skeleton } from '@/components/ui/skeleton'
 import SidebarLayout from '@/components/SidebarLayout'
+import { TemplatesSkeleton } from '@/components/skeletons'
+import { NO_ARGS } from '@/lib/warmQueries'
 import { makeCustomTemplateId, withSampleData } from '@/lib/customTemplates'
 import {
   COVER_TEMPLATES,
@@ -32,6 +35,8 @@ import neatCvLetterSource from '../../templates/neat-cv/letter.typ?raw'
 export const Route = createFileRoute('/templates')({
   component: TemplatesPage,
 })
+
+const RENDERING = 'Rendering preview…'
 
 type ResumeSelection = ResumeTemplateId | `custom:${string}`
 type CoverSelection = CoverTemplateId | `custom:${string}`
@@ -56,9 +61,7 @@ function TemplatesPage() {
   return (
     <SidebarLayout>
       <AuthLoading>
-        <Page>
-          <p className="text-sm text-slate-500">Loading…</p>
-        </Page>
+        <TemplatesSkeleton />
       </AuthLoading>
       <TemplatesContent />
     </SidebarLayout>
@@ -70,7 +73,7 @@ function TemplatesContent() {
   const canQueryTemplates = isAuthenticated && !isLoading
   const customTemplates = useQuery(
     api.customTemplates.listMyTemplates,
-    canQueryTemplates ? {} : 'skip',
+    canQueryTemplates ? NO_ARGS : 'skip',
   )
   const createTemplateFromSource = useMutation(
     api.customTemplates.createTemplateFromSource,
@@ -171,7 +174,7 @@ function TemplatesContent() {
       setResumeStatus('Template unavailable.')
       return
     }
-    setResumeStatus('Rendering preview…')
+    setResumeStatus(RENDERING)
 
     renderTypstToCanvasInBrowser({
       source,
@@ -203,7 +206,7 @@ function TemplatesContent() {
       setCoverStatus('Template unavailable.')
       return
     }
-    setCoverStatus('Rendering preview…')
+    setCoverStatus(RENDERING)
 
     renderTypstToCanvasInBrowser({
       source,
@@ -534,8 +537,14 @@ function TemplateColumn({
       </ul>
 
       <div className="bg-slate-50 p-4 dark:bg-slate-950">
-        <div className="typst-preview min-h-[420px] w-full overflow-hidden">
+        <div className="typst-preview relative min-h-[420px] w-full overflow-hidden">
           <div ref={previewRef} className="w-full" />
+          {status === RENDERING && (
+            <Skeleton
+              className="absolute inset-0 mx-auto aspect-[1/1.414] w-full max-w-[26rem]"
+              rounded="none"
+            />
+          )}
         </div>
       </div>
     </Panel>

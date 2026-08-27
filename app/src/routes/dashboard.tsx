@@ -7,25 +7,20 @@ import {
   useMutation,
   useQuery,
 } from "convex/react";
-import { useCallback, useEffect, useState } from "react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 
 import {
   JobList,
   JobListHeader,
-  JobListSkeleton,
   JobRow,
   type JobStatus,
 } from "@/components/JobList";
 import { PipelineSankey } from "@/components/PipelineSankey";
+import {
+  ActivityChartFallback,
+  DashboardSkeleton,
+  JobListSkeleton,
+} from "@/components/skeletons";
 import SidebarLayout from "@/components/SidebarLayout";
 import {
   BarList,
@@ -36,12 +31,16 @@ import {
   PanelHeader,
   Row,
 } from "@/components/ui/page";
+import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/convex";
 import { sourceLabel, titleCase } from "@/lib/labels";
 import { cn } from "@/lib/utils";
+import { DOCUMENTS_ARGS, JOBS_ARGS, STATS_ARGS } from "@/lib/warmQueries";
 
 import type { Id } from "../../convex/_generated/dataModel";
 import type { ReactNode } from "react";
+
+const ActivityChart = lazy(() => import("@/components/ActivityChart"));
 
 /** Dark mode gets its own steps; the light ramp vanishes on a dark surface. */
 const SANKEY_LIGHT = ["#334155", "#64748b", "#94a3b8", "#cbd5e1"];
@@ -117,9 +116,7 @@ function DashboardPage() {
     <>
       <AuthLoading>
         <SidebarLayout>
-          <Page>
-            <p className="text-sm text-slate-500">Loading…</p>
-          </Page>
+          <DashboardSkeleton />
         </SidebarLayout>
       </AuthLoading>
 
@@ -150,15 +147,18 @@ function DashboardPage() {
 }
 
 function DashboardContent() {
-  // Read once: the server buckets days by this, so it must be stable per render.
-  const [tzOffsetMinutes] = useState(() => new Date().getTimezoneOffset());
-  const stats = useQuery(api.stats.getMyStatistics, {
-    weeks: 12,
-    tzOffsetMinutes,
-  });
-  const jobs = useQuery(api.jobs.listMyJobs, { limit: 50 });
-  const documents = useQuery(api.documents.listMyRecentDocuments, { limit: 6 });
+  const stats = useQuery(api.stats.getMyStatistics, STATS_ARGS);
+  const jobs = useQuery(api.jobs.listMyJobs, JOBS_ARGS);
+  const documents = useQuery(api.documents.listMyRecentDocuments, DOCUMENTS_ARGS);
   const setJobStatus = useMutation(api.jobs.setJobStatus);
+
+  if (stats === undefined) {
+    return (
+      <SidebarLayout>
+        <DashboardSkeleton />
+      </SidebarLayout>
+    );
+  }
 
   return (
     <DashboardBody
@@ -363,57 +363,9 @@ function DashboardBody({
                     </p>
                   )}
                   {mounted && hasTrend && (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={trend}
-                        margin={{ top: 4, right: 4, bottom: 0, left: -26 }}
-                        barCategoryGap="26%"
-                        barGap={2}
-                      >
-                        <CartesianGrid
-                          vertical={false}
-                          stroke="currentColor"
-                          className="text-slate-200 dark:text-slate-800"
-                        />
-                        <XAxis
-                          dataKey="label"
-                          tickLine={false}
-                          axisLine={false}
-                          tick={{ fontSize: 11, fill: "currentColor" }}
-                          className="text-slate-400"
-                          interval="preserveStartEnd"
-                          minTickGap={16}
-                        />
-                        <YAxis
-                          allowDecimals={false}
-                          tickLine={false}
-                          axisLine={false}
-                          width={40}
-                          tick={{ fontSize: 11, fill: "currentColor" }}
-                          className="text-slate-400"
-                        />
-                        <Tooltip
-                          cursor={{ fill: "currentColor", opacity: 0.05 }}
-                          content={<WeekTooltip />}
-                        />
-                        <Bar
-                          dataKey="jobs"
-                          name="Jobs tracked"
-                          fill="currentColor"
-                          fillOpacity={0.75}
-                          radius={[2, 2, 0, 0]}
-                          isAnimationActive={false}
-                        />
-                        <Bar
-                          dataKey="documents"
-                          name="Documents written"
-                          fill="currentColor"
-                          fillOpacity={0.22}
-                          radius={[2, 2, 0, 0]}
-                          isAnimationActive={false}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <Suspense fallback={<ActivityChartFallback />}>
+                      <ActivityChart data={trend} />
+                    </Suspense>
                   )}
                 </div>
               </div>
@@ -513,7 +465,17 @@ function DashboardBody({
                 }
               />
               {documents === undefined ? (
-                <p className="px-4 py-6 text-sm text-slate-400">Loading…</p>
+                <ul>
+                  {Array.from({ length: 6 }, (_, index) => (
+                    <Row as="li" key={index}>
+                      <div className="min-w-0 flex-1 space-y-1.5">
+                        <Skeleton className="h-3 w-3/4" />
+                        <Skeleton className="h-2.5 w-1/2" />
+                      </div>
+                      <Skeleton className="h-2.5 w-10" />
+                    </Row>
+                  ))}
+                </ul>
               ) : documents.length === 0 ? (
                 <EmptyState
                   className="py-10"
@@ -530,7 +492,7 @@ function DashboardBody({
                 />
               ) : (
                 <ul>
-                  {documents.map((doc: any) => (
+                  {documents.slice(0, 6).map((doc: any) => (
                     <Row as="li" key={doc._id}>
                       <Link
                         to="/editor/$documentId"
@@ -778,30 +740,4 @@ function describeDay(jobs: number, documents: number) {
   if (documents)
     parts.push(`${documents} ${documents === 1 ? "document" : "documents"}`);
   return parts.length ? parts.join(", ") : "nothing";
-}
-
-/** The default tooltip is a card; this one keeps the page's hairline grammar. */
-function WeekTooltip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null;
-
-  return (
-    <div className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-900">
-      <div className="mb-1.5 font-medium text-slate-900 dark:text-slate-100">
-        Week of {label}
-      </div>
-      <ul className="space-y-0.5">
-        {payload.map((entry: any) => (
-          <li
-            key={entry.dataKey}
-            className="flex items-center justify-between gap-6 text-slate-500 dark:text-slate-400"
-          >
-            <span>{entry.name}</span>
-            <span className="tabular-nums text-slate-900 dark:text-slate-100">
-              {entry.value}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
 }

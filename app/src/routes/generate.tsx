@@ -15,6 +15,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 import type { Id } from '../../convex/_generated/dataModel'
 import SidebarLayout from '@/components/SidebarLayout'
+import { GenerateFormSkeleton, GenerateSkeleton } from '@/components/skeletons'
 import { EmptyState, Page, PageHeader, Panel, PanelHeader } from '@/components/ui/page'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,6 +34,7 @@ import { ReviewSetup } from '@/components/review/ReviewSetup'
 import { stepLabel, stepProgress } from '../../convex/lib/progress'
 import { cn } from '@/lib/utils'
 import { useElapsedProgress } from '@/lib/useElapsedProgress'
+import { DOCUMENTS_ARGS, NO_ARGS } from '@/lib/warmQueries'
 import {
   countPdfPages,
   describeCapacity,
@@ -350,9 +352,7 @@ function GeneratePage() {
     <>
       <AuthLoading>
         <SidebarLayout>
-          <Page>
-            <p className="text-sm text-slate-500">Loading…</p>
-          </Page>
+          <GenerateSkeleton />
         </SidebarLayout>
       </AuthLoading>
 
@@ -389,12 +389,12 @@ function GenerateContent() {
   const search = Route.useSearch()
   const { isAuthenticated, isLoading } = useConvexAuth()
 
-  const profileDoc = useQuery(api.profiles.myProfile, {})
-  const settings = useQuery(api.settings.mySettings, {})
+  const profileDoc = useQuery(api.profiles.myProfile, NO_ARGS)
+  const settings = useQuery(api.settings.mySettings, NO_ARGS)
   const canQueryTemplates = isAuthenticated && !isLoading
   const customTemplates = useQuery(
     api.customTemplates.listMyTemplates,
-    canQueryTemplates ? {} : 'skip',
+    canQueryTemplates ? NO_ARGS : 'skip',
   )
   const generate = useAction(api.generation.generateDocuments)
   const updateDocumentData = useMutation(api.documents.updateMyDocumentData)
@@ -403,7 +403,7 @@ function GenerateContent() {
   const createUploadUrl = useMutation(api.reviews.generateUploadUrl)
   const myDocuments = useQuery(
     api.documents.listMyRecentDocuments,
-    canQueryTemplates ? { limit: 50 } : 'skip',
+    canQueryTemplates ? DOCUMENTS_ARGS : 'skip',
   )
 
   const profile = (profileDoc as any)?.profile
@@ -845,9 +845,7 @@ function GenerateContent() {
       />
 
       {profileDoc === undefined ? (
-        <div className="flex justify-center py-12">
-           <p className="text-sm text-slate-500 dark:text-slate-400">Loading profile...</p>
-        </div>
+        <GenerateFormSkeleton />
       ) : !profile?.personal?.fullName ? (
         <Panel>
           <PanelHeader title="Finish your profile first" />

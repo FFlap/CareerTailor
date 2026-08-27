@@ -388,26 +388,3 @@ function Dot({ className }: { className: string }) {
   );
 }
 
-/** Hairline rows while the query lands, so the panel does not jump on arrival. */
-export function JobListSkeleton({ rows = 5 }: { rows?: number }) {
-  return (
-    <ul aria-busy role="status" aria-label="Loading tracked jobs">
-      {Array.from({ length: rows }, (_, index) => (
-        <li
-          key={index}
-          className="flex animate-pulse items-center gap-4 border-b border-slate-100 px-4 py-3 last:border-b-0 motion-reduce:animate-none dark:border-slate-800/70"
-        >
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <div
-              className="h-3 rounded-sm bg-slate-100 dark:bg-slate-800"
-              style={{ width: `${58 - index * 6}%` }}
-            />
-            <div className="h-2.5 w-24 rounded-sm bg-slate-100/70 dark:bg-slate-800/60" />
-          </div>
-          <div className="h-3 w-8 rounded-sm bg-slate-100 dark:bg-slate-800" />
-          <div className="h-3 w-16 rounded-sm bg-slate-100 dark:bg-slate-800" />
-        </li>
-      ))}
-    </ul>
-  );
-}

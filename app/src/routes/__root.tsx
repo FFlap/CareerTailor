@@ -6,6 +6,7 @@ import { ConvexProviderWithClerk } from 'convex/react-clerk'
 import { ConvexReactClient } from 'convex/react'
 
 import Header from '../components/Header'
+import { WarmWorkspaceData } from '../lib/warmQueries'
 
 import appCss from '../styles.css?url'
 
@@ -77,6 +78,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             <HeadContent />
           </head>
           <body className="min-h-screen bg-background text-foreground" suppressHydrationWarning>
+            <WarmWorkspaceData />
             {hideHeader ? null : <Header />}
             {children}
             {import.meta.env.DEV ? (
