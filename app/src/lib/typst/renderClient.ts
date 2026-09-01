@@ -3,6 +3,13 @@ import {
   RESUME_TEMPLATES,
 } from "../../../convex/lib/templates";
 
+import {
+  CJK_FONT_URLS,
+  CJK_RANGE,
+  CORE_FONT_URLS,
+  normalizeTypstSource,
+} from "./fontSet";
+
 import modernCvProfilePngUrl from "../../../templates/modern-cv/profile.png?url";
 import neatCvProfilePngUrl from "../../../templates/neat-cv/profile.png?url";
 import neatCvPublicationsYml from "../../../templates/neat-cv/publications.yml?raw";
@@ -49,15 +56,6 @@ const ASSET_TEXTS: Record<string, string> = {
   "templates/impressive-impression/assets/flags/gr.svg": impressiveFlagGrSvg,
 };
 
-const GOOGLE_FONT_URLS = [
-  "https://raw.githubusercontent.com/google/fonts/main/ofl/sourcesans3/SourceSans3%5Bwght%5D.ttf",
-  "https://raw.githubusercontent.com/google/fonts/main/ofl/sourcesans3/SourceSans3-Italic%5Bwght%5D.ttf",
-  "https://raw.githubusercontent.com/google/fonts/main/ofl/opensans/OpenSans%5Bwdth%2Cwght%5D.ttf",
-  "https://raw.githubusercontent.com/google/fonts/main/ofl/opensans/OpenSans-Italic%5Bwdth%2Cwght%5D.ttf",
-  "https://raw.githubusercontent.com/google/fonts/main/ofl/roboto/Roboto%5Bwdth%2Cwght%5D.ttf",
-  "https://raw.githubusercontent.com/google/fonts/main/ofl/roboto/Roboto-Italic%5Bwdth%2Cwght%5D.ttf",
-];
-
 const assetBytesCache = new Map<string, Promise<Uint8Array>>();
 
 async function getAssetBytes(assetRel: string): Promise<Uint8Array> {
@@ -103,13 +101,24 @@ function getTemplateMeta(input: RenderInput): TemplateMeta {
 }
 
 let compilerPromise: Promise<TypstCompilerBundle> | null = null;
+let compilerCarriesCjk = false;
 let compilerMutex: Promise<void> = Promise.resolve();
 let rendererPromise: Promise<TypstRendererBundle> | null = null;
 let rendererMutex: Promise<void> = Promise.resolve();
 
-async function getTypstCompilerBundle(): Promise<TypstCompilerBundle> {
+async function getTypstCompilerBundle(
+  needsCjk = false,
+): Promise<TypstCompilerBundle> {
+  // A CJK document arriving at a compiler built without those faces is the one
+  // case worth paying for the second build; from then on it carries them.
+  if (needsCjk && !compilerCarriesCjk) compilerPromise = null;
+
   if (!compilerPromise) {
-    compilerPromise = (async () => {
+    compilerCarriesCjk = needsCjk;
+    const fontUrls = needsCjk
+      ? [...CORE_FONT_URLS, ...CJK_FONT_URLS]
+      : CORE_FONT_URLS;
+    const pending = (async () => {
       if (typeof window === "undefined") {
         throw new Error("Typst client renderer can only run in the browser.");
       }
@@ -133,7 +142,7 @@ async function getTypstCompilerBundle(): Promise<TypstCompilerBundle> {
         getWrapper: () => import("@myriaddreamin/typst-ts-web-compiler"),
         getModule: () => wasmUrl,
         beforeBuild: [
-          optionsInit.loadFonts(GOOGLE_FONT_URLS, { assets: ["text", "cjk"] }),
+          optionsInit.loadFonts(fontUrls, { assets: false }),
           optionsInit.withAccessModel(accessModel),
           optionsInit.withPackageRegistry(packageRegistry),
         ],
@@ -145,13 +154,20 @@ async function getTypstCompilerBundle(): Promise<TypstCompilerBundle> {
         CompileFormatEnum: compilerModule.CompileFormatEnum,
       };
     })();
+    compilerPromise = pending;
+    void pending.catch(() => {
+      if (compilerPromise === pending) {
+        compilerPromise = null;
+        compilerCarriesCjk = false;
+      }
+    });
   }
   return compilerPromise;
 }
 
 async function getTypstRendererBundle(): Promise<TypstRendererBundle> {
   if (!rendererPromise) {
-    rendererPromise = (async () => {
+    const pending = (async () => {
       if (typeof window === "undefined") {
         throw new Error("Typst renderer can only run in the browser.");
       }
@@ -169,6 +185,10 @@ async function getTypstRendererBundle(): Promise<TypstRendererBundle> {
 
       return { renderer };
     })();
+    rendererPromise = pending;
+    void pending.catch(() => {
+      if (rendererPromise === pending) rendererPromise = null;
+    });
   }
   return rendererPromise;
 }
@@ -216,7 +236,7 @@ async function compileTypst(
 
   return await withCompilerLock(async () => {
     const { compiler, accessModel, CompileFormatEnum } =
-      await getTypstCompilerBundle();
+      await getTypstCompilerBundle(CJK_RANGE.test(source));
     const compileFormat =
       format === "pdf" ? CompileFormatEnum.pdf : CompileFormatEnum.vector;
 
@@ -269,6 +289,23 @@ export async function renderTypstToVectorArtifactInBrowser(
   return await compileTypst(input, "vector");
 }
 
+/** A4 is 595pt wide. The sample rate only has to be right to within a page. */
+const NOMINAL_PAGE_WIDTH_PT = 595;
+
+/**
+ * How many device pixels to rasterise per typographic point. The renderer's
+ * default of 3 draws an A4 page at 1785px however small it is shown, which on
+ * a phone is around three times what the screen can use. Matching the device's
+ * own pixels is as sharp as a raster gets; the floor of 1.5 keeps a little
+ * supersampling for the screens that do not have pixels to spare.
+ */
+function samplingFor(container: HTMLElement) {
+  const cssWidth = container.offsetWidth || NOMINAL_PAGE_WIDTH_PT;
+  const dpr = Math.max(window.devicePixelRatio || 1, 1.5);
+  const needed = (cssWidth / NOMINAL_PAGE_WIDTH_PT) * dpr;
+  return Math.min(3, Math.max(1.5, Math.round(needed * 4) / 4));
+}
+
 export async function renderTypstToCanvasInBrowser(
   input: RenderInput & {
     container: HTMLElement;
@@ -280,17 +317,74 @@ export async function renderTypstToCanvasInBrowser(
     throw new Error("Missing preview container.");
   }
 
+  // The renderer's WASM is a separate download from the compiler's, so it is
+  // fetched while the source compiles rather than after.
+  const rendererBundle = getTypstRendererBundle();
+  rendererBundle.catch(() => {});
+
   const artifact = await renderTypstToVectorArtifactInBrowser(input);
+  const pixelPerPt = input.pixelPerPt ?? samplingFor(input.container);
+
   await withRendererLock(async () => {
-    const { renderer } = await getTypstRendererBundle();
+    const { renderer } = await rendererBundle;
     await renderer.renderToCanvas({
       container: input.container,
       format: "vector",
       artifactContent: artifact,
       backgroundColor: input.backgroundColor ?? "#ffffff",
-      pixelPerPt: input.pixelPerPt,
+      pixelPerPt,
     });
   });
+
+  input.container.dataset.pixelPerPt = String(pixelPerPt);
+}
+
+/**
+ * The renderer scales each page from the container's width at the moment it
+ * renders, and never looks again. A pane that was hidden then (width 0), or a
+ * window that has since been resized, leaves pages at the wrong scale. The
+ * canvases are rasterised independently of the container, so this is CSS to
+ * put right, not another compile.
+ */
+export function relayoutTypstPreview(container: HTMLElement | null) {
+  if (!container) return;
+  const width = container.offsetWidth;
+  if (!width) return;
+  const pixelPerPt = Number(container.dataset.pixelPerPt) || 1;
+
+  container.querySelectorAll<HTMLElement>(".typst-page").forEach((page) => {
+    const canvas = page.querySelector("canvas");
+    const canvasDiv = canvas?.parentElement;
+    if (!canvas || !canvasDiv) return;
+
+    const scale = width / canvas.width;
+    page.style.width = `${width}px`;
+    page.style.height = `${canvas.height * scale}px`;
+    canvasDiv.style.transformOrigin = "0px 0px";
+    canvasDiv.style.transform = `scale(${scale})`;
+
+    const semantics = page.querySelector<HTMLElement>(".typst-html-semantics");
+    if (!semantics) return;
+    const textScale = scale * pixelPerPt;
+    semantics.style.width = `${width}px`;
+    semantics.style.height = `${canvas.height * scale}px`;
+    semantics.style.setProperty("--data-text-width", `${textScale}px`);
+    semantics.style.setProperty("--data-text-height", `${textScale}px`);
+  });
+}
+
+/** Keeps `container`'s pages laid out as its width changes, or first appears. */
+export function watchTypstPreview(container: HTMLElement): () => void {
+  if (typeof ResizeObserver === "undefined") return () => {};
+  let lastWidth = container.offsetWidth;
+  const observer = new ResizeObserver(() => {
+    const width = container.offsetWidth;
+    if (width === lastWidth) return;
+    lastWidth = width;
+    relayoutTypstPreview(container);
+  });
+  observer.observe(container);
+  return () => observer.disconnect();
 }
 
 /**
@@ -325,14 +419,6 @@ export async function renderTypstFirstPageToDataUrl(
   } finally {
     host.remove();
   }
-}
-
-function normalizeTypstSource(source: string) {
-  return source
-    .replace(/"Source Sans Pro"/gi, '"New Computer Modern"')
-    .replace(/"Source Sans 3"/gi, '"New Computer Modern"')
-    .replace(/"Roboto"/gi, '"New Computer Modern"')
-    .replace(/"Open Sans"/gi, '"New Computer Modern"');
 }
 
 function toUint8Array(bytes: unknown, format: "pdf" | "vector") {

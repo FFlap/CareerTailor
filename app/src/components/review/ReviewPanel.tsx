@@ -69,7 +69,7 @@ export function ReviewPanel({
   const allOpen = keys.length > 0 && keys.every(disclosure.isOpen);
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+    <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain">
       <p className="border-b border-slate-200 px-4 py-4 text-[13px] leading-relaxed text-slate-700 dark:border-slate-800 dark:text-slate-200">
         {summary}
       </p>

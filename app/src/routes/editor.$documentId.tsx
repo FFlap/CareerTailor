@@ -311,6 +311,24 @@ function EditorContent() {
     void render(source);
   }, [doc, source, render]);
 
+  // The renderer scales pages against the width it saw and never looks again,
+  // so the container is watched for the resizes that would stale it.
+  useEffect(() => {
+    const container = previewRef.current;
+    if (!container) return;
+    let cancelled = false;
+    let stop = () => {};
+    void import("@/lib/typst/renderClient").then((typst) => {
+      if (cancelled) return;
+      typst.relayoutTypstPreview(container);
+      stop = typst.watchTypstPreview(container);
+    });
+    return () => {
+      cancelled = true;
+      stop();
+    };
+  }, [doc]);
+
   // Arriving from Generate with a review already written should open on it.
   useEffect(() => {
     if (!pane || !doc) return;
@@ -644,8 +662,8 @@ function EditorContent() {
   };
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <header className="shrink-0 border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+    <div className="flex min-h-[100dvh] flex-col bg-slate-100 text-slate-900 lg:h-screen lg:overflow-hidden dark:bg-slate-950 dark:text-slate-100">
+      <header className="sticky top-0 z-30 shrink-0 border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
         <div className="mx-auto flex h-14 max-w-[1800px] items-center gap-4 px-4 sm:px-6">
           <Link
             to="/dashboard"
@@ -728,8 +746,8 @@ function EditorContent() {
       {!doc ? (
         <EditorPanesSkeleton />
       ) : (
-        <div className="flex min-h-0 flex-1 gap-px bg-slate-200 dark:bg-slate-800">
-          <section className="flex min-h-0 w-full flex-col bg-white lg:w-[46%] lg:min-w-[26rem] dark:bg-slate-950">
+        <div className="flex flex-1 flex-col gap-px bg-slate-200 lg:min-h-0 lg:flex-row dark:bg-slate-800">
+          <section className="flex w-full flex-col bg-white lg:min-h-0 lg:w-[46%] lg:min-w-[26rem] dark:bg-slate-950">
             <div
               role="tablist"
               className="flex shrink-0 items-center gap-1 border-b border-slate-200 px-3 dark:border-slate-800"
@@ -863,7 +881,7 @@ function EditorContent() {
             )}
 
             {activeTab === "source" ? (
-              <div className="flex min-h-0 flex-1">
+              <div className="flex lg:min-h-0 lg:flex-1">
                 <div
                   aria-hidden
                   className="hidden shrink-0 select-none overflow-hidden border-r border-slate-100 py-4 pl-4 pr-2 text-right font-mono text-[11px] leading-6 text-slate-300 dark:border-slate-900 dark:text-slate-700 sm:block"
@@ -881,16 +899,16 @@ function EditorContent() {
                   onKeyDown={handleKeyDown}
                   spellCheck={false}
                   aria-label="Typst source"
-                  className="min-h-0 flex-1 resize-none rounded-none border-0 bg-transparent px-4 py-4 font-mono text-[12.5px] leading-6 text-slate-700 shadow-none focus-visible:ring-0 dark:text-slate-300"
+                  className="min-h-[60vh] flex-1 resize-none rounded-none border-0 bg-transparent px-4 py-4 font-mono text-[12.5px] leading-6 text-slate-700 shadow-none focus-visible:ring-0 lg:min-h-0 dark:text-slate-300"
                 />
               </div>
             ) : activeTab === "review" ? (
               review === undefined ? (
-                <div className="flex min-h-0 flex-1 items-center justify-center">
+                <div className="flex min-h-[30vh] flex-1 items-center justify-center lg:min-h-0">
                   <Meta>Loading</Meta>
                 </div>
               ) : review === null ? (
-                <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-8 text-center">
+                <div className="flex min-h-[50vh] flex-1 flex-col items-center justify-center gap-4 px-8 text-center lg:min-h-0">
                   <div className="max-w-[42ch] space-y-1.5">
                     <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                       Nobody has read this yet
@@ -938,7 +956,7 @@ function EditorContent() {
                 </>
               )
             ) : (
-              <div className="@container/fields min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 sm:px-5">
+              <div className="@container/fields px-4 sm:px-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain">
                 {doc.type === "resume" ? (
                   <ResumeFields
                     value={(structuredData ?? EMPTY_RESUME) as ResumeData}
@@ -980,8 +998,8 @@ function EditorContent() {
             </div>
           </section>
 
-          <section className="hidden min-h-0 flex-1 flex-col bg-slate-100 lg:flex dark:bg-slate-900">
-            <div className="flex h-[41px] shrink-0 items-center justify-between border-b border-slate-200 px-4 dark:border-slate-800">
+          <section className="flex flex-col bg-slate-100 lg:min-h-0 lg:flex-1 dark:bg-slate-900">
+            <div className="sticky top-14 z-20 flex h-[41px] shrink-0 items-center justify-between border-b border-slate-200 bg-slate-100 px-4 lg:static dark:border-slate-800 dark:bg-slate-900">
               <Meta>Preview</Meta>
               <Meta>{templateLabel}</Meta>
             </div>
@@ -1034,7 +1052,7 @@ function EditorContent() {
               </div>
             )}
 
-            <div className="custom-scrollbar flex min-h-0 flex-1 flex-col items-center overflow-auto p-6 lg:p-10">
+            <div className="custom-scrollbar flex flex-col items-center p-3 sm:p-6 lg:min-h-0 lg:flex-1 lg:overflow-auto lg:p-10">
               {/* The marked-up page replaces the plain preview on the review
                   pane. Both stay mounted so neither has to re-render on a tab
                   change. */}
@@ -1044,7 +1062,7 @@ function EditorContent() {
                   markedUpVisible ? "flex" : "hidden",
                 )}
               >
-                <div ref={reviewPdfRef} className="flex flex-col gap-4" />
+                <div ref={reviewPdfRef} className="flex w-full flex-col items-center gap-4" />
                 {isMarkingUp && (
                   <div className="flex flex-col items-center gap-2 py-16">
                     <Loader2

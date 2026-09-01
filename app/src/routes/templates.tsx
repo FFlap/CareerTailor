@@ -3,11 +3,9 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AuthLoading, useConvexAuth, useMutation, useQuery } from 'convex/react'
 
-import {
-  renderTypstToCanvasInBrowser,
-} from '@/lib/typst/renderClient'
 import { api } from '@/lib/convex'
 import { cn } from '@/lib/utils'
+import { TEMPLATE_PREVIEWS } from '@/lib/templatePreviews'
 import { Page, PageHeader, Panel, PanelHeader } from '@/components/ui/page'
 import { Skeleton } from '@/components/ui/skeleton'
 import SidebarLayout from '@/components/SidebarLayout'
@@ -21,17 +19,6 @@ import {
   type ResumeTemplateId,
 } from '@/lib/templates'
 
-import basicResumeSource from '../../templates/basic-resume/main.typ?raw'
-import simpleTechnicalResumeSource from '../../templates/simple-technical-resume/main.typ?raw'
-import modernCvResumeSource from '../../templates/modern-cv/resume.typ?raw'
-import neatCvResumeSource from '../../templates/neat-cv/cv.typ?raw'
-import metronicResumeSource from '../../templates/metronic/main.typ?raw'
-import impressiveImpressionSource from '../../templates/impressive-impression/cv.typ?raw'
-
-import modernCvCoverSource from '../../templates/modern-cv/coverletter.typ?raw'
-import modernCvCoverAltSource from '../../templates/modern-cv/coverletter2.typ?raw'
-import neatCvLetterSource from '../../templates/neat-cv/letter.typ?raw'
-
 export const Route = createFileRoute('/templates')({
   component: TemplatesPage,
 })
@@ -41,19 +28,57 @@ const RENDERING = 'Rendering preview…'
 type ResumeSelection = ResumeTemplateId | `custom:${string}`
 type CoverSelection = CoverTemplateId | `custom:${string}`
 
-const RESUME_SOURCES: Record<ResumeTemplateId, string> = {
-  basic_resume: basicResumeSource,
-  simple_technical_resume: simpleTechnicalResumeSource,
-  modern_cv: modernCvResumeSource,
-  neat_cv: neatCvResumeSource,
-  metronic: metronicResumeSource,
-  impressive_impression: impressiveImpressionSource,
-}
+/** Compiles a preview in the browser. Only custom templates need this. */
+function renderInto(
+  container: HTMLDivElement | null,
+  {
+    source,
+    documentType,
+    templateId,
+    setStatus,
+  }: {
+    source: string | undefined
+    documentType: 'resume' | 'cover_letter'
+    templateId: string
+    setStatus: (status: string) => void
+  },
+) {
+  if (!container) return
+  container.innerHTML = ''
+  if (!source) {
+    setStatus('Template unavailable.')
+    return
+  }
 
-const COVER_SOURCES: Record<CoverTemplateId, string> = {
-  modern_cv_cover: modernCvCoverSource,
-  modern_cv_cover_alt: modernCvCoverAltSource,
-  neat_cv_letter: neatCvLetterSource,
+  let cancelled = false
+  let stopWatching = () => {}
+  setStatus(RENDERING)
+  void import('@/lib/typst/renderClient')
+    .then(async (typst) => {
+      if (cancelled) return
+      stopWatching = typst.watchTypstPreview(container)
+      await typst.renderTypstToCanvasInBrowser({
+        source,
+        documentType,
+        templateId,
+        container,
+      })
+      if (cancelled) return
+      typst.relayoutTypstPreview(container)
+    })
+    .then(() => {
+      if (!cancelled) setStatus('')
+    })
+    .catch((error) => {
+      if (!cancelled) {
+        setStatus(error instanceof Error ? error.message : 'Preview failed.')
+      }
+    })
+
+  return () => {
+    cancelled = true
+    stopWatching()
+  }
 }
 
 function TemplatesPage() {
@@ -143,7 +168,7 @@ function TemplatesContent() {
   )
 
   const resumeSources = useMemo(() => {
-    const sources: Record<string, string> = { ...RESUME_SOURCES }
+    const sources: Record<string, string> = {}
     customResumeTemplates.forEach((template: any) => {
       sources[makeCustomTemplateId(template._id)] = withSampleData(
         'resume',
@@ -154,7 +179,7 @@ function TemplatesContent() {
   }, [customResumeTemplates])
 
   const coverSources = useMemo(() => {
-    const sources: Record<string, string> = { ...COVER_SOURCES }
+    const sources: Record<string, string> = {}
     customCoverTemplates.forEach((template: any) => {
       sources[makeCustomTemplateId(template._id)] = withSampleData(
         'cover_letter',
@@ -164,69 +189,34 @@ function TemplatesContent() {
     return sources
   }, [customCoverTemplates])
 
+  const resumePrerendered = TEMPLATE_PREVIEWS[selectedResume]
+  const coverPrerendered = TEMPLATE_PREVIEWS[selectedCover]
+
   useEffect(() => {
-    let cancelled = false
-    const container = resumePreviewRef.current
-    if (!container) return
-    container.innerHTML = ''
-    const source = resumeSources[selectedResume]
-    if (!source) {
-      setResumeStatus('Template unavailable.')
+    if (resumePrerendered) {
+      setResumeStatus('')
       return
     }
-    setResumeStatus(RENDERING)
-
-    renderTypstToCanvasInBrowser({
-      source,
+    return renderInto(resumePreviewRef.current, {
+      source: resumeSources[selectedResume],
       documentType: 'resume',
       templateId: selectedResume,
-      container,
+      setStatus: setResumeStatus,
     })
-      .then(() => {
-        if (!cancelled) setResumeStatus('')
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          setResumeStatus(error instanceof Error ? error.message : 'Preview failed.')
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [selectedResume, resumeSources])
+  }, [selectedResume, resumeSources, resumePrerendered])
 
   useEffect(() => {
-    let cancelled = false
-    const container = coverPreviewRef.current
-    if (!container) return
-    container.innerHTML = ''
-    const source = coverSources[selectedCover]
-    if (!source) {
-      setCoverStatus('Template unavailable.')
+    if (coverPrerendered) {
+      setCoverStatus('')
       return
     }
-    setCoverStatus(RENDERING)
-
-    renderTypstToCanvasInBrowser({
-      source,
+    return renderInto(coverPreviewRef.current, {
+      source: coverSources[selectedCover],
       documentType: 'cover_letter',
       templateId: selectedCover,
-      container,
+      setStatus: setCoverStatus,
     })
-      .then(() => {
-        if (!cancelled) setCoverStatus('')
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          setCoverStatus(error instanceof Error ? error.message : 'Preview failed.')
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [selectedCover, coverSources])
+  }, [selectedCover, coverSources, coverPrerendered])
 
   function resetCreateForm() {
     setNewTemplateName('')
@@ -324,6 +314,7 @@ function TemplatesContent() {
           onSelect={(id) => setSelectedResume(id as ResumeSelection)}
           onDelete={(rawId, label) => handleDeleteTemplate(rawId, label, "resume")}
           previewRef={resumePreviewRef}
+          prerenderedSrc={resumePrerendered}
         />
         <TemplateColumn
           title="Cover letters"
@@ -333,6 +324,7 @@ function TemplatesContent() {
           onSelect={(id) => setSelectedCover(id as CoverSelection)}
           onDelete={(rawId, label) => handleDeleteTemplate(rawId, label, "cover_letter")}
           previewRef={coverPreviewRef}
+          prerenderedSrc={coverPrerendered}
         />
       </div>
 
@@ -482,6 +474,7 @@ function TemplateColumn({
   onSelect,
   onDelete,
   previewRef,
+  prerenderedSrc,
 }: {
   title: string
   status?: string
@@ -490,6 +483,7 @@ function TemplateColumn({
   onSelect: (id: string) => void
   onDelete: (rawId: string, label: string) => void
   previewRef: React.RefObject<HTMLDivElement | null>
+  prerenderedSrc?: string
 }) {
   return (
     <Panel className="overflow-hidden">
@@ -538,12 +532,23 @@ function TemplateColumn({
 
       <div className="bg-slate-50 p-4 dark:bg-slate-950">
         <div className="typst-preview relative min-h-[420px] w-full overflow-hidden">
-          <div ref={previewRef} className="w-full" />
-          {status === RENDERING && (
-            <Skeleton
-              className="absolute inset-0 mx-auto aspect-[1/1.414] w-full max-w-[26rem]"
-              rounded="none"
+          {prerenderedSrc ? (
+            <img
+              src={prerenderedSrc}
+              alt={`${title} preview`}
+              decoding="async"
+              className="mx-auto block w-full bg-white shadow-[0_18px_40px_rgba(0,0,0,0.08)]"
             />
+          ) : (
+            <>
+              <div ref={previewRef} className="w-full" />
+              {status === RENDERING && (
+                <Skeleton
+                  className="absolute inset-0 mx-auto aspect-[1/1.414] w-full max-w-[26rem]"
+                  rounded="none"
+                />
+              )}
+            </>
           )}
         </div>
       </div>

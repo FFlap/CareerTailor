@@ -73,6 +73,8 @@ function ReviewContent() {
   const [isDeleting, setIsDeleting] = useState(false);
   const pdfContainerRef = useRef<HTMLDivElement | null>(null);
   const pagesRef = useRef<PdfPages>(new Map());
+  const activeIdRef = useRef<number | null>(null);
+  activeIdRef.current = activeId;
 
   const comments: ReviewComment[] = useMemo(
     () => (Array.isArray(review?.comments) ? review.comments : []),
@@ -119,7 +121,10 @@ function ReviewContent() {
         isCancelled: () => cancelled,
       });
       if (cancelled) return;
-      applyHighlights(pagesRef.current, quotes, null);
+      applyHighlights(pagesRef.current, quotes, activeIdRef.current);
+      if (activeIdRef.current !== null) {
+        scrollToComment(pagesRef.current, activeIdRef.current);
+      }
     })()
       .catch((error) => {
         if (cancelled) return;
@@ -180,8 +185,8 @@ function ReviewContent() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <header className="shrink-0 border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+    <div className="flex min-h-[100dvh] flex-col bg-slate-100 text-slate-900 lg:h-screen lg:overflow-hidden dark:bg-slate-950 dark:text-slate-100">
+      <header className="sticky top-0 z-30 shrink-0 border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
         <div className="mx-auto flex h-14 max-w-[1800px] items-center gap-4 px-4 sm:px-6">
           <Link
             to="/documents"
@@ -244,9 +249,9 @@ function ReviewContent() {
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 gap-px bg-slate-200 dark:bg-slate-800">
-        <section className="flex min-h-0 w-full flex-col bg-white lg:w-[46%] lg:min-w-[26rem] dark:bg-slate-950">
-          <div className="flex h-[41px] shrink-0 items-center justify-between border-b border-slate-200 px-4 dark:border-slate-800">
+      <div className="flex flex-1 flex-col gap-px bg-slate-200 lg:min-h-0 lg:flex-row dark:bg-slate-800">
+        <section className="flex w-full flex-col bg-white lg:min-h-0 lg:w-[46%] lg:min-w-[26rem] dark:bg-slate-950">
+          <div className="sticky top-14 z-20 flex h-[41px] shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 lg:static dark:border-slate-800 dark:bg-slate-950">
             <Meta>Review</Meta>
             <Meta>
               {review.jobDescription ? "Against a posting" : "No posting"}
@@ -264,8 +269,8 @@ function ReviewContent() {
           />
         </section>
 
-        <section className="hidden min-h-0 flex-1 flex-col bg-slate-100 lg:flex dark:bg-slate-900">
-          <div className="flex h-[41px] shrink-0 items-center justify-between border-b border-slate-200 px-4 dark:border-slate-800">
+        <section className="flex flex-col bg-slate-100 lg:min-h-0 lg:flex-1 dark:bg-slate-900">
+          <div className="sticky top-14 z-20 flex h-[41px] shrink-0 items-center justify-between border-b border-slate-200 bg-slate-100 px-4 lg:static dark:border-slate-800 dark:bg-slate-900">
             <Meta>{review.fileUrl ? "The file you uploaded" : "Extracted text"}</Meta>
             {isRendering && <Meta>Rendering</Meta>}
           </div>
@@ -276,10 +281,13 @@ function ReviewContent() {
             </p>
           )}
 
-          <div className="custom-scrollbar flex min-h-0 flex-1 flex-col items-center gap-4 overflow-auto p-6 lg:p-10">
+          <div className="custom-scrollbar flex flex-col items-center gap-4 p-3 sm:p-6 lg:min-h-0 lg:flex-1 lg:overflow-auto lg:p-10">
             {review.fileUrl && !pdfError ? (
               <>
-                <div ref={pdfContainerRef} className="flex flex-col gap-4" />
+                <div
+                  ref={pdfContainerRef}
+                  className="flex w-full max-w-[595px] flex-col items-center gap-4"
+                />
                 {isRendering && (
                   <div className="flex flex-col items-center gap-2 py-16">
                     <Loader2

@@ -464,11 +464,11 @@ function WorkbenchSkeleton({
 
 export function EditorPanesSkeleton() {
   return (
-    <div className="flex min-h-0 flex-1 gap-px bg-slate-200 dark:bg-slate-800">
-      <section className="flex min-h-0 w-full flex-col bg-white lg:w-[46%] lg:min-w-[26rem] dark:bg-slate-950">
+    <div className="flex flex-1 flex-col gap-px bg-slate-200 lg:min-h-0 lg:flex-row dark:bg-slate-800">
+      <section className="flex w-full flex-col bg-white lg:min-h-0 lg:w-[46%] lg:min-w-[26rem] dark:bg-slate-950">
         <div className="flex shrink-0 items-center gap-4 border-b border-slate-200 px-3 py-3.5 dark:border-slate-800">
-          {["w-12", "w-14", "w-14"].map((width) => (
-            <Skeleton key={width} className={cn("h-3", width)} />
+          {["w-12", "w-14", "w-14"].map((width, index) => (
+            <Skeleton key={index} className={cn("h-3", width)} />
           ))}
         </div>
         <div className="space-y-4 p-4">
@@ -481,7 +481,7 @@ export function EditorPanesSkeleton() {
         </div>
       </section>
 
-      <section className="hidden min-h-0 flex-1 bg-slate-50 p-6 lg:block dark:bg-slate-900">
+      <section className="bg-slate-50 p-6 lg:min-h-0 lg:flex-1 dark:bg-slate-900">
         <Skeleton
           className="mx-auto aspect-[1/1.414] w-full max-w-[38rem]"
           rounded="none"
