@@ -190,10 +190,11 @@ function ReviewContent() {
         <div className="mx-auto flex h-14 max-w-[1800px] items-center gap-4 px-4 sm:px-6">
           <Link
             to="/documents"
-            className="hidden shrink-0 items-center gap-1.5 text-xs text-slate-500 outline-none transition-colors hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-slate-900/15 dark:text-slate-400 dark:hover:text-slate-100 md:flex"
+            aria-label="Back to documents"
+            className="-m-2 flex shrink-0 items-center gap-1.5 rounded p-2 text-xs text-slate-500 outline-none transition-colors hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-slate-900/15 dark:text-slate-400 dark:hover:text-slate-100 md:m-0 md:p-0"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            Documents
+            <span className="hidden md:inline">Documents</span>
           </Link>
 
           <div className="hidden h-4 w-px bg-slate-200 dark:bg-slate-800 md:block" />
