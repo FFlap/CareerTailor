@@ -174,4 +174,157 @@
       animation: none;
     }
   }
+
+
+
+  .ob-rise {
+    animation: ob-rise 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--i, 0) * 55ms + var(--delay, 0ms));
+  }
+
+  .ob-rise-back {
+    animation: ob-rise-back 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--i, 0) * 55ms + var(--delay, 0ms));
+  }
+
+  .ob-leave {
+    animation: ob-leave 200ms ease-in both;
+  }
+
+  .ob-leave-back {
+    animation: ob-leave-back 200ms ease-in both;
+  }
+
+
+  .ob-rule {
+    transform-origin: left center;
+    animation: ob-rule 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: var(--delay, 0ms);
+  }
+
+  .ob-letter {
+    display: inline-block;
+    animation: ob-letter 620ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--i, 0) * 34ms + var(--delay, 0ms));
+  }
+
+
+  .ob-check path {
+    stroke-dasharray: 24;
+    stroke-dashoffset: 24;
+    animation: ob-draw 340ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+
+  .ob-typeset {
+    transform-origin: left center;
+    animation: ob-typeset 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--i, 0) * 90ms + var(--delay, 0ms));
+  }
+
+  .ob-page-in {
+    animation: ob-page-in 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: var(--delay, 0ms);
+  }
+
+
+  .ob-caret {
+    animation: ob-caret 900ms steps(1) infinite;
+  }
+
+  .ob-count {
+    animation: ob-rise 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--i, 0) * 90ms);
+  }
+
+  .ob-pulse {
+    animation: ob-pulse 2.4s ease-in-out infinite;
+  }
+
+  @keyframes ob-rise {
+    from { opacity: 0; transform: translate3d(0, 14px, 0); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @keyframes ob-rise-back {
+    from { opacity: 0; transform: translate3d(0, -14px, 0); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @keyframes ob-leave {
+    from { opacity: 1; transform: none; }
+    to { opacity: 0; transform: translate3d(0, -12px, 0); }
+  }
+
+  @keyframes ob-leave-back {
+    from { opacity: 1; transform: none; }
+    to { opacity: 0; transform: translate3d(0, 12px, 0); }
+  }
+
+  @keyframes ob-rule {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+
+  @keyframes ob-letter {
+    from { opacity: 0; transform: translate3d(0, 0.42em, 0); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @keyframes ob-draw {
+    to { stroke-dashoffset: 0; }
+  }
+
+
+  @keyframes ob-typeset {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+
+  @keyframes ob-page-in {
+    from { opacity: 0; transform: translate3d(0, 26px, 0) rotate(-0.6deg); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @keyframes ob-caret {
+    50% { opacity: 0; }
+  }
+
+  @keyframes ob-pulse {
+    0%, 100% { opacity: 0.25; }
+    50% { opacity: 0.6; }
+  }
+
+
+  .ob-spotlight {
+    transition:
+      top 420ms cubic-bezier(0.16, 1, 0.3, 1),
+      left 420ms cubic-bezier(0.16, 1, 0.3, 1),
+      width 420ms cubic-bezier(0.16, 1, 0.3, 1),
+      height 420ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ob-rise,
+    .ob-rise-back,
+    .ob-leave,
+    .ob-leave-back,
+    .ob-rule,
+    .ob-letter,
+    .ob-typeset,
+    .ob-page-in,
+    .ob-count,
+    .ob-caret,
+    .ob-pulse,
+    .ob-check path {
+      animation: none;
+      opacity: 1;
+      transform: none;
+      stroke-dashoffset: 0;
+    }
+
+    .ob-spotlight {
+      transition: none;
+    }
+  }
 }

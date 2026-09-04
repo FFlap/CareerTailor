@@ -6,6 +6,7 @@ import { ConvexProviderWithClerk } from 'convex/react-clerk'
 import { ConvexReactClient } from 'convex/react'
 
 import Header from '../components/Header'
+import { OnboardingGate } from '../components/onboarding/OnboardingGate'
 import { WarmWorkspaceData } from '../lib/warmQueries'
 
 import appCss from '../styles.css?url'
@@ -66,6 +67,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     '/review/',
     '/templates',
     '/profile',
+    '/onboarding',
   ]
   const hideHeader =
     pathname === '/' || OWN_CHROME.some((prefix) => pathname.startsWith(prefix))
@@ -79,6 +81,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           </head>
           <body className="min-h-screen bg-background text-foreground" suppressHydrationWarning>
             <WarmWorkspaceData />
+            <OnboardingGate />
             {hideHeader ? null : <Header />}
             {children}
             {import.meta.env.DEV ? (

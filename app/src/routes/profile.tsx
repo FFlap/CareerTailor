@@ -22,6 +22,7 @@ import {
 } from "@/components/editor/useDisclosure";
 import {
   EMPTY_RESUME,
+  mergeParsedResume,
   profileToResume,
   resumeDisclosureKeys,
   resumeToProfile,
@@ -69,30 +70,6 @@ function ProfilePage() {
       </div>
     </SidebarLayout>
   );
-}
-
-/** Fills blanks from the parsed resume; never overwrites what is already there. */
-function mergeParsedResume(existing: ResumeData, parsed: any): ResumeData {
-  const incoming = profileToResume(parsed);
-  const pick = <T,>(next: T[], current: T[]) =>
-    next.length ? next : current;
-
-  return {
-    header: {
-      name: incoming.header.name || existing.header.name,
-      email: incoming.header.email || existing.header.email,
-      phone: incoming.header.phone || existing.header.phone,
-      location: incoming.header.location || existing.header.location,
-      links: pick(incoming.header.links, existing.header.links),
-    },
-    summary: incoming.summary || existing.summary,
-    skills: pick(incoming.skills, existing.skills),
-    experience: pick(incoming.experience, existing.experience),
-    projects: pick(incoming.projects, existing.projects),
-    education: pick(incoming.education, existing.education),
-    customSections: pick(incoming.customSections, existing.customSections),
-    sectionOrder: existing.sectionOrder,
-  };
 }
 
 function ProfileContent() {

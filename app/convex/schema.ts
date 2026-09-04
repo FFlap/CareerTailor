@@ -166,6 +166,24 @@ export default defineSchema({
     .index("by_user_document", ["userId", "documentId"])
     .index("by_user_favorite", ["userId", "favorite"]),
 
+  onboarding: defineTable({
+    userId: v.string(),
+    status: v.union(
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("skipped"),
+    ),
+    step: v.number(),
+    answers: v.object({
+      goal: v.optional(v.string()),
+      stage: v.optional(v.string()),
+      field: v.optional(v.string()),
+    }),
+    tourDone: v.optional(v.boolean()),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  }).index("by_user", ["userId"]),
+
   userSettings: defineTable({
     userId: v.string(),
     defaultResumeTemplateId: v.string(),

@@ -31,6 +31,8 @@ import {
 import { renderTypstToCanvasInBrowser } from '@/lib/typst/renderClient'
 import { extractTextFromPdf } from '@/lib/extractText'
 import { ReviewSetup } from '@/components/review/ReviewSetup'
+import { GenerateTour } from '@/components/onboarding/GenerateTour'
+import { suggestedLength } from '@/components/onboarding/questions'
 import { stepLabel, stepProgress } from '../../convex/lib/progress'
 import { cn } from '@/lib/utils'
 import { useElapsedProgress } from '@/lib/useElapsedProgress'
@@ -69,6 +71,7 @@ export const Route = createFileRoute('/generate')({
     if (typeof search.url === 'string') parsed.url = search.url
     if (typeof search.source === 'string') parsed.source = search.source
     if (typeof search.jobId === 'string') parsed.jobId = search.jobId
+    if (search.tour === '1') parsed.tour = '1'
     if (typeof search.addedAt === 'number' && Number.isFinite(search.addedAt)) {
       parsed.addedAt = search.addedAt
     } else if (typeof search.addedAt === 'string') {
@@ -89,6 +92,7 @@ type GenerateSearch = {
   source?: string
   jobId?: string
   addedAt?: number
+  tour?: '1'
 }
 
 type JobDraft = {
@@ -391,6 +395,7 @@ function GenerateContent() {
 
   const profileDoc = useQuery(api.profiles.myProfile, NO_ARGS)
   const settings = useQuery(api.settings.mySettings, NO_ARGS)
+  const onboarding = useQuery(api.onboarding.myOnboarding, NO_ARGS)
   const canQueryTemplates = isAuthenticated && !isLoading
   const customTemplates = useQuery(
     api.customTemplates.listMyTemplates,
@@ -444,10 +449,12 @@ function GenerateContent() {
 
   const [resumeTemplateId, setResumeTemplateId] = useState<ResumeTemplateSelection>('none')
   const [coverTemplateId, setCoverTemplateId] = useState<CoverTemplateSelection>('none')
+  const seededTemplates = useRef(false)
   const [resumePickerOpen, setResumePickerOpen] = useState(false)
   const [coverPickerOpen, setCoverPickerOpen] = useState(false)
   const [tone, setTone] = useState<string>('professional')
   const [targetLength, setTargetLength] = useState<string>('1_page')
+  const seededLength = useRef(false)
   const [status, setStatus] = useState<string>('')
   const [statusIsProblem, setStatusIsProblem] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -566,6 +573,20 @@ function GenerateContent() {
           'Select a cover letter'
 
   const contentEstimate = useMemo(() => estimateContent(profile), [profile])
+
+  useEffect(() => {
+    if (!settings || seededTemplates.current) return
+    seededTemplates.current = true
+    setResumeTemplateId(settings.defaultResumeTemplateId as ResumeTemplateSelection)
+  }, [settings])
+
+  useEffect(() => {
+    if (!onboarding || seededLength.current) return
+    seededLength.current = true
+    if (suggestedLength(onboarding.answers ?? {}) === '2_pages') {
+      setTargetLength('2_pages')
+    }
+  }, [onboarding])
 
   // Two pages of paper needs two pages of material.
   useEffect(() => {
@@ -818,6 +839,7 @@ function GenerateContent() {
         }
         actions={
           <div
+            id="tour-mode"
             role="tablist"
             aria-label="What to do"
             className="flex items-center gap-0.5 rounded-md border border-slate-200 p-0.5 dark:border-slate-800"
@@ -847,7 +869,7 @@ function GenerateContent() {
       {profileDoc === undefined ? (
         <GenerateFormSkeleton />
       ) : !profile?.personal?.fullName ? (
-        <Panel>
+        <Panel id="tour-profile-empty">
           <PanelHeader title="Finish your profile first" />
           <div className="p-4">
             <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
@@ -863,7 +885,7 @@ function GenerateContent() {
         <div className="grid gap-4 lg:grid-cols-2">
           {/* Grid items default to min-width:auto and burst the track on a phone. */}
           <div className="min-w-0 space-y-4">
-             <Panel>
+             <Panel id="tour-posting">
               <PanelHeader title="The posting" meta="Optional" />
               <div className="space-y-4 p-4">
                 <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
@@ -937,7 +959,7 @@ function GenerateContent() {
               />
             ) : (
               <>
-            <Panel>
+            <Panel id="tour-templates">
               <PanelHeader title="Templates" />
               <div className="space-y-4 p-4">
                 <div className="space-y-2">
@@ -988,7 +1010,7 @@ function GenerateContent() {
               </div>
             </Panel>
 
-            <Panel>
+            <Panel id="tour-voice">
               <PanelHeader title="Voice and length" />
               <div className="space-y-4 p-4">
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -1145,6 +1167,7 @@ function GenerateContent() {
           ) : (
             <button
               type="button"
+              id="tour-generate"
               onClick={onGenerate}
               disabled={
                 isGenerating ||
@@ -1159,6 +1182,8 @@ function GenerateContent() {
           </div>
         </div>
       )}
+
+      <GenerateTour active={search.tour === '1'} />
     </Page>
   )
 }
@@ -1190,4 +1215,3 @@ function ModeTab({
     </button>
   )
 }
-

@@ -13,6 +13,7 @@ import { Route as TemplatesRouteImport } from './routes/templates'
 import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as JobApplicationsRouteImport } from './routes/job-applications'
 import { Route as GenerateRouteImport } from './routes/generate'
 import { Route as GalleryRouteImport } from './routes/gallery'
@@ -42,6 +43,11 @@ const SignInRoute = SignInRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JobApplicationsRoute = JobApplicationsRouteImport.update({
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/gallery': typeof GalleryRoute
   '/generate': typeof GenerateRoute
   '/job-applications': typeof JobApplicationsRoute
+  '/onboarding': typeof OnboardingRoute
   '/profile': typeof ProfileRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
@@ -118,6 +125,7 @@ export interface FileRoutesByTo {
   '/gallery': typeof GalleryRoute
   '/generate': typeof GenerateRoute
   '/job-applications': typeof JobApplicationsRoute
+  '/onboarding': typeof OnboardingRoute
   '/profile': typeof ProfileRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
@@ -135,6 +143,7 @@ export interface FileRoutesById {
   '/gallery': typeof GalleryRoute
   '/generate': typeof GenerateRoute
   '/job-applications': typeof JobApplicationsRoute
+  '/onboarding': typeof OnboardingRoute
   '/profile': typeof ProfileRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
@@ -153,6 +162,7 @@ export interface FileRouteTypes {
     | '/gallery'
     | '/generate'
     | '/job-applications'
+    | '/onboarding'
     | '/profile'
     | '/sign-in'
     | '/sign-up'
@@ -169,6 +179,7 @@ export interface FileRouteTypes {
     | '/gallery'
     | '/generate'
     | '/job-applications'
+    | '/onboarding'
     | '/profile'
     | '/sign-in'
     | '/sign-up'
@@ -185,6 +196,7 @@ export interface FileRouteTypes {
     | '/gallery'
     | '/generate'
     | '/job-applications'
+    | '/onboarding'
     | '/profile'
     | '/sign-in'
     | '/sign-up'
@@ -202,6 +214,7 @@ export interface RootRouteChildren {
   GalleryRoute: typeof GalleryRoute
   GenerateRoute: typeof GenerateRoute
   JobApplicationsRoute: typeof JobApplicationsRoute
+  OnboardingRoute: typeof OnboardingRoute
   ProfileRoute: typeof ProfileRoute
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
@@ -240,6 +253,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/job-applications': {
@@ -322,6 +342,7 @@ const rootRouteChildren: RootRouteChildren = {
   GalleryRoute: GalleryRoute,
   GenerateRoute: GenerateRoute,
   JobApplicationsRoute: JobApplicationsRoute,
+  OnboardingRoute: OnboardingRoute,
   ProfileRoute: ProfileRoute,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,

@@ -27,6 +27,7 @@ import type * as lib_reviewText from "../lib/reviewText.js";
 import type * as lib_streak from "../lib/streak.js";
 import type * as lib_stream from "../lib/stream.js";
 import type * as lib_templates from "../lib/templates.js";
+import type * as onboarding from "../onboarding.js";
 import type * as profiles from "../profiles.js";
 import type * as resumeParsing from "../resumeParsing.js";
 import type * as reviews from "../reviews.js";
@@ -59,6 +60,7 @@ declare const fullApi: ApiFromModules<{
   "lib/streak": typeof lib_streak;
   "lib/stream": typeof lib_stream;
   "lib/templates": typeof lib_templates;
+  onboarding: typeof onboarding;
   profiles: typeof profiles;
   resumeParsing: typeof resumeParsing;
   reviews: typeof reviews;
