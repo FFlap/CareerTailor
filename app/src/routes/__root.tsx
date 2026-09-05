@@ -29,6 +29,21 @@ export const Route = createRootRoute({
     ],
     links: [
       {
+        rel: 'icon',
+        href: '/favicon.ico',
+        sizes: '48x48',
+      },
+      {
+        // Preferred where supported: crisp at every size, and one file.
+        rel: 'icon',
+        href: '/favicon.svg',
+        type: 'image/svg+xml',
+      },
+      {
+        rel: 'apple-touch-icon',
+        href: '/apple-touch-icon.png',
+      },
+      {
         rel: 'preconnect',
         href: 'https://fonts.googleapis.com',
       },
@@ -73,7 +88,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     pathname === '/' || OWN_CHROME.some((prefix) => pathname.startsWith(prefix))
 
   return (
-    <ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
+    <ClerkProvider
+      publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
+      appearance={{ layout: { logoImageUrl: '/favicon.svg' } }}
+    >
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
         <html lang="en">
           <head>

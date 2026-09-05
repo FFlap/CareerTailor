@@ -40,11 +40,9 @@ body {
 }
 
 .brand-mark {
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  background: linear-gradient(135deg, #6366F1, #8B5CF6);
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
+  width: 12px;
+  height: 25px;
+  background: url("../icons/logo.svg") center / contain no-repeat;
 }
 
 .brand-name {

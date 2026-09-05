@@ -11,6 +11,7 @@ import {
   type CSSProperties,
 } from "react";
 
+import { Logo } from "@/components/Logo";
 import { ResumeDropZone } from "@/components/ResumeDropZone";
 import {
   mergeParsedResume,
@@ -223,9 +224,7 @@ export function OnboardingFlow({
   return (
     <div className="flex h-[100dvh] min-h-screen flex-col bg-white font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <header className="flex h-14 shrink-0 items-center justify-between px-5 sm:px-8">
-        <span className="font-display text-sm font-semibold tracking-tight">
-          CareerTailor
-        </span>
+        <Logo />
         <button
           type="button"
           onClick={() => void leave("skipped")}

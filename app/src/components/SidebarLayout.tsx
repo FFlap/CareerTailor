@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { Logo, LogoMark } from "@/components/Logo";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -129,11 +130,8 @@ export default function SidebarLayout({ children }: { children: ReactNode }) {
           >
             <Menu className="h-4 w-4" />
           </button>
-          <Link
-            to="/"
-            className="font-display text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-50"
-          >
-            CareerTailor
+          <Link to="/" className="inline-flex text-slate-900 dark:text-slate-50">
+            <Logo />
           </Link>
         </div>
 
@@ -166,29 +164,36 @@ function SidebarBody({
           collapsed ? "justify-center px-2" : "justify-between px-3",
         )}
       >
-        {!collapsed && (
+        {collapsed ? (
           <Link
             to="/"
             onClick={onNavigate}
-            className="font-display text-sm font-semibold tracking-tight text-slate-900 outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 dark:text-slate-50"
+            aria-label="CareerTailor home"
+            title="CareerTailor"
+            className="inline-flex rounded-md p-1 outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15"
           >
-            CareerTailor
+            <LogoMark className="h-7" />
+          </Link>
+        ) : (
+          <Link
+            to="/"
+            onClick={onNavigate}
+            className="inline-flex rounded-md text-slate-900 outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 dark:text-slate-50"
+          >
+            <Logo />
           </Link>
         )}
 
-        {onToggleCollapse && (
+        {/* Collapsed, the mark owns this row; the toggle moves to the footer stack. */}
+        {onToggleCollapse && !collapsed && (
           <button
             type="button"
             onClick={onToggleCollapse}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label="Collapse sidebar"
+            title="Collapse sidebar"
             className="rounded-md p-1.5 text-slate-400 outline-none transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-slate-900/15 dark:hover:bg-slate-800 dark:hover:text-slate-100"
           >
-            {collapsed ? (
-              <PanelLeftOpen className="h-4 w-4" />
-            ) : (
-              <PanelLeftClose className="h-4 w-4" />
-            )}
+            <PanelLeftClose className="h-4 w-4" />
           </button>
         )}
 
@@ -263,7 +268,19 @@ function SidebarBody({
           collapsed ? "flex-col" : "justify-between",
         )}
       >
-        <div className={cn("flex items-center", collapsed ? "" : "gap-1")}>
+        <div className={cn("flex items-center", collapsed ? "flex-col" : "gap-1")}>
+          {onToggleCollapse && collapsed && (
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              aria-label="Expand sidebar"
+              title="Expand sidebar"
+              className="rounded-md p-2 text-slate-400 outline-none transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-slate-900/15 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+            >
+              <PanelLeftOpen className="h-4 w-4" />
+            </button>
+          )}
+
           <button
             type="button"
             onClick={onToggleTheme}

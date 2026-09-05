@@ -7,6 +7,7 @@ import { Link } from "@tanstack/react-router";
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -34,9 +35,9 @@ export default function Header() {
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-5 sm:px-8">
         <Link
           to="/"
-          className="shrink-0 font-display text-sm font-semibold tracking-tight text-slate-900 outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 dark:text-slate-50"
+          className="inline-flex shrink-0 rounded-md text-slate-900 outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 dark:text-slate-50"
         >
-          CareerTailor
+          <Logo />
         </Link>
 
         <SignedIn>

@@ -1,6 +1,8 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
 
+import { Logo } from "@/components/Logo";
+
 export const Route = createFileRoute("/")({
   component: LandingPage,
 });
@@ -40,9 +42,7 @@ function LandingPage() {
     <div className="min-h-screen bg-white font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <header className="border-b border-slate-200 dark:border-slate-800">
         <nav className="mx-auto flex h-14 max-w-5xl items-center justify-between px-5 sm:px-8">
-          <span className="font-display text-sm font-semibold tracking-tight">
-            CareerTailor
-          </span>
+          <Logo />
           <div className="flex items-center gap-2">
             <Link
               to="/templates"
@@ -167,7 +167,7 @@ function LandingPage() {
 
       <footer className="border-t border-slate-200 dark:border-slate-800">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-5 py-6 text-xs text-slate-400 sm:px-8 dark:text-slate-500">
-          <span>CareerTailor</span>
+          <Logo size="sm" />
           <Link
             to="/templates"
             className="transition-colors hover:text-slate-900 dark:hover:text-slate-100"
