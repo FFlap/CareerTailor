@@ -165,15 +165,37 @@ function SidebarBody({
         )}
       >
         {collapsed ? (
-          <Link
-            to="/"
-            onClick={onNavigate}
-            aria-label="CareerTailor home"
-            title="CareerTailor"
-            className="inline-flex rounded-md p-1 outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15"
-          >
-            <LogoMark className="h-7" />
-          </Link>
+          // Collapsed, the mark doubles as the expand control: it swaps on hover/focus.
+          <div className="group/mark relative inline-flex">
+            <Link
+              to="/"
+              onClick={onNavigate}
+              aria-label="CareerTailor home"
+              title="CareerTailor"
+              className="inline-flex rounded-md p-1 outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15"
+            >
+              <LogoMark className="h-7" />
+            </Link>
+
+            {onToggleCollapse && (
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                aria-label="Expand sidebar"
+                title="Expand sidebar"
+                className={cn(
+                  // Opaque so it hides the mark underneath as it fades in.
+                  "absolute -inset-x-1 inset-y-0 flex items-center justify-center rounded-md bg-white text-slate-500 outline-none dark:bg-slate-900",
+                  "pointer-events-none opacity-0 transition-opacity duration-150 ease-out motion-reduce:transition-none",
+                  "hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100",
+                  "group-hover/mark:pointer-events-auto group-hover/mark:opacity-100",
+                  "focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-slate-900/15",
+                )}
+              >
+                <PanelLeftOpen className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         ) : (
           <Link
             to="/"
@@ -184,7 +206,6 @@ function SidebarBody({
           </Link>
         )}
 
-        {/* Collapsed, the mark owns this row; the toggle moves to the footer stack. */}
         {onToggleCollapse && !collapsed && (
           <button
             type="button"
@@ -269,18 +290,6 @@ function SidebarBody({
         )}
       >
         <div className={cn("flex items-center", collapsed ? "flex-col" : "gap-1")}>
-          {onToggleCollapse && collapsed && (
-            <button
-              type="button"
-              onClick={onToggleCollapse}
-              aria-label="Expand sidebar"
-              title="Expand sidebar"
-              className="rounded-md p-2 text-slate-400 outline-none transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-slate-900/15 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-            >
-              <PanelLeftOpen className="h-4 w-4" />
-            </button>
-          )}
-
           <button
             type="button"
             onClick={onToggleTheme}
