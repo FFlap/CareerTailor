@@ -359,7 +359,15 @@ async function init() {
       }
       const job = getJobData();
       await syncJob(job);
-      const url = `${APP_BASE_URL}/generate?url=${encodeURIComponent(job.url)}&title=${encodeURIComponent(job.title)}&company=${encodeURIComponent(job.company)}&addedAt=${encodeURIComponent(String(job.addedAt))}`;
+      // URLSearchParams encodes spaces as "+", matching how the router
+      // canonicalizes search params. %20 makes it redirect instead.
+      const params = new URLSearchParams({
+        url: job.url,
+        title: job.title,
+        company: job.company,
+        addedAt: String(job.addedAt)
+      });
+      const url = `${APP_BASE_URL}/generate?${params}`;
       chrome.tabs.create({ url });
       setStatus("Opened.");
     } catch (error) {
