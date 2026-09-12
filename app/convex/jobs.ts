@@ -1,5 +1,8 @@
-import { mutation, query } from './_generated/server'
+import { internalMutation, mutation, query } from './_generated/server'
 import { v } from 'convex/values'
+
+import { internal } from './_generated/api'
+import { appliedAtForStatus, needsUpdate } from './lib/jobAging'
 
 import { requireUserId } from './lib/auth'
 
@@ -71,6 +74,7 @@ export const upsertMyJob = mutation({
       jobId: (args.jobId?.trim() ?? '').slice(0, MAX_JOB_TEXT.jobId),
       source: (args.source?.trim() ?? 'extension').slice(0, MAX_JOB_TEXT.source),
       status: resolvedStatus,
+      appliedAt: appliedAtForStatus(existing, resolvedStatus, now),
       lastSeenAt: now,
       updatedAt: now,
     } as const
@@ -144,9 +148,17 @@ export const getMyAppliedProgress = query({
       .query('jobs')
       .withIndex('by_user_updatedAt', (q) => q.eq('userId', userId))
       .filter((q) =>
-        q.and(
-          q.gte(q.field('updatedAt'), sinceMs),
-          q.lt(q.field('updatedAt'), untilMs),
+        // Automatic status changes must not count as new applications today.
+        q.or(
+          q.and(
+            q.gte(q.field('appliedAt'), sinceMs),
+            q.lt(q.field('appliedAt'), untilMs),
+          ),
+          q.and(
+            q.eq(q.field('appliedAt'), undefined),
+            q.gte(q.field('updatedAt'), sinceMs),
+            q.lt(q.field('updatedAt'), untilMs),
+          ),
         ),
       )
       .collect()
@@ -155,6 +167,7 @@ export const getMyAppliedProgress = query({
     for (const job of jobsInWindow) {
       if (
         job.status === 'applied' ||
+        job.status === 'needs_update' ||
         job.status === 'interview' ||
         job.status === 'accepted' ||
         job.status === 'ghosted'
@@ -210,7 +223,39 @@ export const setJobStatus = mutation({
       throw new Error('Not found.')
     }
     const now = Date.now()
-    await ctx.db.patch(args.jobId, { status: args.status, updatedAt: now })
+    await ctx.db.patch(args.jobId, {
+      status: args.status,
+      appliedAt: appliedAtForStatus(job, args.status, now),
+      updatedAt: now,
+    })
     return { ok: true }
+  },
+})
+
+// Bound each transaction; continue through all users' applied jobs.
+export const markStaleApplications = internalMutation({
+  args: { cursor: v.optional(v.string()) },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const now = Date.now()
+    const result = await ctx.db.query('jobs')
+      .withIndex('by_status', (q) => q.eq('status', 'applied'))
+      .paginate({ cursor: args.cursor ?? null, numItems: 100 })
+
+    for (const job of result.page) {
+      if (needsUpdate(job, now)) {
+        await ctx.db.patch(job._id, {
+          status: 'needs_update',
+          appliedAt: job.appliedAt ?? job.updatedAt,
+          updatedAt: now,
+        })
+      }
+    }
+    if (!result.isDone) {
+      await ctx.scheduler.runAfter(0, internal.jobs.markStaleApplications, {
+        cursor: result.continueCursor,
+      })
+    }
+    return null
   },
 })

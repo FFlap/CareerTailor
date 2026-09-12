@@ -21,6 +21,7 @@ import {
   JobListHeader,
   JobRow,
   jobStatusOf,
+  type SelectableJobStatus,
   type JobStatus,
 } from "@/components/JobList";
 import { EmptyState, Page, PageHeader, Panel } from "@/components/ui/page";
@@ -168,7 +169,7 @@ function JobApplicationsContent() {
     resetKey: `${statusFilter}:${query.trim()}`,
   });
 
-  async function updateJobStatus(jobId: string, status: JobStatus) {
+  async function updateJobStatus(jobId: string, status: SelectableJobStatus) {
     await setJobStatus({ jobId: jobId as Id<"jobs">, status });
   }
 
@@ -305,7 +306,9 @@ function JobApplicationsContent() {
                     ? "The browser extension adds jobs as you browse. You can also add one by hand."
                     : query.trim()
                       ? "Search covers role and company names."
-                      : "Move a job here from its stage menu, or look at another stage."
+                      : statusFilter === "needs_update"
+                        ? "Applied jobs move here automatically after one month without a stage change."
+                        : "Move a job here from its stage menu, or look at another stage."
                 }
                 action={
                   jobs.length === 0 ? (

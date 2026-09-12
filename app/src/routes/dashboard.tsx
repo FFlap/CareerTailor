@@ -13,7 +13,7 @@ import {
   JobList,
   JobListHeader,
   JobRow,
-  type JobStatus,
+  type SelectableJobStatus,
 } from "@/components/JobList";
 import { PipelineSankey } from "@/components/PipelineSankey";
 import {
@@ -181,7 +181,7 @@ function DashboardBody({
   stats: any | undefined;
   jobs: any[] | undefined;
   documents: any[] | undefined;
-  onStatusChange: (jobId: string, status: JobStatus) => void;
+  onStatusChange: (jobId: string, status: SelectableJobStatus) => void;
 }) {
   const { user } = useUser();
   const [mounted, setMounted] = useState(false);
@@ -194,6 +194,7 @@ function DashboardBody({
     total: 0,
     viewed: 0,
     applied: 0,
+    needs_update: 0,
     interview: 0,
     accepted: 0,
     ghosted: 0,
@@ -215,7 +216,7 @@ function DashboardBody({
   };
 
   const applied =
-    counts.applied + counts.interview + counts.accepted + counts.ghosted;
+    (counts.needs_update ?? 0) + counts.applied + counts.interview + counts.accepted + counts.ghosted;
   const interviewed = counts.interview + counts.accepted;
 
   // Statuses are exclusive, so the bands divide the set rather than track movement.
@@ -233,7 +234,7 @@ function DashboardBody({
   const flowLinks = [
     { source: "tracked", target: "viewed", value: counts.viewed },
     { source: "tracked", target: "applied", value: applied },
-    { source: "applied", target: "open", value: counts.applied },
+    { source: "applied", target: "open", value: counts.applied + (counts.needs_update ?? 0) },
     { source: "applied", target: "interview", value: interviewed },
     { source: "applied", target: "ghosted", value: counts.ghosted },
     { source: "interview", target: "talking", value: counts.interview },

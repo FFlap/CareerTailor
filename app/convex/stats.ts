@@ -5,7 +5,7 @@ import { requireUserId } from './lib/auth'
 import { jobSource } from './lib/jobSource'
 import { bestRun, currentRun, dayIndexOf } from './lib/streak'
 
-type JobStatus = 'viewed' | 'applied' | 'interview' | 'accepted' | 'ghosted'
+type JobStatus = 'needs_update' | 'viewed' | 'applied' | 'interview' | 'accepted' | 'ghosted'
 
 type TrendBucket = {
   label: string
@@ -101,6 +101,7 @@ export const getMyStatistics = query({
       total: jobs.length,
       viewed: 0,
       applied: 0,
+      needs_update: 0,
       interview: 0,
       accepted: 0,
       ghosted: 0,
@@ -216,7 +217,7 @@ export const getMyStatistics = query({
     }
 
     const appliedOrBeyond =
-      jobCounts.applied + jobCounts.interview + jobCounts.accepted + jobCounts.ghosted
+      jobCounts.needs_update + jobCounts.applied + jobCounts.interview + jobCounts.accepted + jobCounts.ghosted
     const interviewStage = jobCounts.interview + jobCounts.accepted
 
     const jobRates = {

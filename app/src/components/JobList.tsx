@@ -22,10 +22,13 @@ import { jobSource } from "../../convex/lib/jobSource";
 
 export type JobStatus =
   | "viewed"
+  | "needs_update"
   | "applied"
   | "interview"
   | "accepted"
   | "ghosted";
+
+export type SelectableJobStatus = Exclude<JobStatus, "needs_update">;
 
 export type JobStage = {
   value: JobStatus;
@@ -35,14 +38,20 @@ export type JobStage = {
   exit?: boolean;
 };
 
-/** Pipeline order first, then the exit. Single source of truth for both screens. */
+/** Pipeline order first, then the exit and automatic follow-up stage. */
 export const JOB_STAGES: JobStage[] = [
   { value: "viewed", label: "Viewed", dot: "bg-slate-300 dark:bg-slate-600" },
   { value: "applied", label: "Applied", dot: "bg-slate-500" },
   { value: "interview", label: "Interview", dot: "bg-amber-500" },
   { value: "accepted", label: "Offer", dot: "bg-emerald-500" },
   { value: "ghosted", label: "Ghosted", dot: "bg-rose-400", exit: true },
+  { value: "needs_update", label: "Follow Up", dot: "bg-orange-500" },
 ];
+
+const SELECTABLE_STAGES = JOB_STAGES.filter(
+  (stage): stage is JobStage & { value: SelectableJobStatus } =>
+    stage.value !== "needs_update",
+);
 
 const STAGE_BY_VALUE = Object.fromEntries(
   JOB_STAGES.map((stage) => [stage.value, stage]),
@@ -58,7 +67,7 @@ export function jobStatusOf(job: { status?: string }): JobStatus {
  * wide list earns a Source column rather than leaving the gap as air.
  */
 const COLUMNS =
-  "grid grid-cols-1 gap-y-2.5 @xl/list:grid-cols-[minmax(0,1fr)_4rem_7.75rem_5.75rem] @xl/list:gap-x-4 @xl/list:gap-y-0 @3xl/list:grid-cols-[minmax(0,1fr)_7rem_4rem_7.75rem_5.75rem]";
+  "grid grid-cols-1 gap-y-2.5 @xl/list:grid-cols-[minmax(0,1fr)_4rem_9rem_5.75rem] @xl/list:gap-x-4 @xl/list:gap-y-0 @3xl/list:grid-cols-[minmax(0,1fr)_7rem_4rem_9rem_5.75rem]";
 
 /** How long you have been sitting on it reads better than the calendar day. */
 function formatAge(value: unknown) {
@@ -113,7 +122,7 @@ export function JobRow({
   onStatusChange,
 }: {
   job: any;
-  onStatusChange: (jobId: string, status: JobStatus) => void;
+  onStatusChange: (jobId: string, status: SelectableJobStatus) => void;
 }) {
   const status = jobStatusOf(job);
   const addedAt = job.addedAt ?? job.createdAt ?? job.lastSeenAt;
@@ -222,7 +231,7 @@ export function StageMenu({
 }: {
   status: JobStatus;
   jobTitle?: string;
-  onChange: (status: JobStatus) => void;
+  onChange: (status: SelectableJobStatus) => void;
   className?: string;
 }) {
   const stage = STAGE_BY_VALUE[status];
@@ -244,7 +253,7 @@ export function StageMenu({
   useEffect(() => {
     if (!open) return;
     const index = Math.max(
-      JOB_STAGES.findIndex((item) => item.value === status),
+      SELECTABLE_STAGES.findIndex((item) => item.value === status),
       0,
     );
     itemRefs.current[index]?.focus();
@@ -281,7 +290,7 @@ export function StageMenu({
     const current = itemRefs.current.findIndex(
       (node) => node === document.activeElement,
     );
-    const next = (current + step + JOB_STAGES.length) % JOB_STAGES.length;
+    const next = (current + step + SELECTABLE_STAGES.length) % SELECTABLE_STAGES.length;
     itemRefs.current[next]?.focus();
   }
 
@@ -334,7 +343,7 @@ export function StageMenu({
           <p className="px-2 pb-1 pt-1 text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-slate-500">
             Move to
           </p>
-          {JOB_STAGES.map((item, index) => (
+          {SELECTABLE_STAGES.map((item, index) => (
             // role="none" keeps the wrapper out of the menu's ARIA structure.
             <div key={item.value} role="none">
               {item.exit && (
@@ -387,4 +396,3 @@ function Dot({ className }: { className: string }) {
     />
   );
 }
-

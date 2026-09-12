@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as crons from "../crons.js";
 import type * as customTemplates from "../customTemplates.js";
 import type * as documents from "../documents.js";
 import type * as generation from "../generation.js";
@@ -15,6 +16,7 @@ import type * as jobs from "../jobs.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_chat from "../lib/chat.js";
 import type * as lib_gemini from "../lib/gemini.js";
+import type * as lib_jobAging from "../lib/jobAging.js";
 import type * as lib_jobSource from "../lib/jobSource.js";
 import type * as lib_json from "../lib/json.js";
 import type * as lib_llm from "../lib/llm.js";
@@ -41,6 +43,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  crons: typeof crons;
   customTemplates: typeof customTemplates;
   documents: typeof documents;
   generation: typeof generation;
@@ -48,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   "lib/chat": typeof lib_chat;
   "lib/gemini": typeof lib_gemini;
+  "lib/jobAging": typeof lib_jobAging;
   "lib/jobSource": typeof lib_jobSource;
   "lib/json": typeof lib_json;
   "lib/llm": typeof lib_llm;

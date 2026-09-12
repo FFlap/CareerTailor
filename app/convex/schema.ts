@@ -93,17 +93,20 @@ export default defineSchema({
     status: v.union(
       v.literal("viewed"),
       v.literal("applied"),
+      v.literal("needs_update"),
       v.literal("interview"),
       v.literal("accepted"),
       v.literal("ghosted"),
     ),
     addedAt: v.optional(v.number()),
+    appliedAt: v.optional(v.number()),
     lastSeenAt: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_user_updatedAt", ["userId", "updatedAt"])
-    .index("by_user_url", ["userId", "url"]),
+    .index("by_user_url", ["userId", "url"])
+    .index("by_status", ["status"]),
 
   documents: defineTable({
     userId: v.string(),
