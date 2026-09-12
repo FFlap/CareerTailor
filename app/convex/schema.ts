@@ -97,6 +97,7 @@ export default defineSchema({
       v.literal("interview"),
       v.literal("accepted"),
       v.literal("ghosted"),
+      v.literal("rejected"),
     ),
     addedAt: v.optional(v.number()),
     appliedAt: v.optional(v.number()),

@@ -26,7 +26,8 @@ export type JobStatus =
   | "applied"
   | "interview"
   | "accepted"
-  | "ghosted";
+  | "ghosted"
+  | "rejected";
 
 export type SelectableJobStatus = Exclude<JobStatus, "needs_update">;
 
@@ -45,6 +46,7 @@ export const JOB_STAGES: JobStage[] = [
   { value: "interview", label: "Interview", dot: "bg-amber-500" },
   { value: "accepted", label: "Offer", dot: "bg-emerald-500" },
   { value: "ghosted", label: "Ghosted", dot: "bg-rose-400", exit: true },
+  { value: "rejected", label: "Rejected", dot: "bg-red-500" },
   { value: "needs_update", label: "Follow Up", dot: "bg-orange-500" },
 ];
 
@@ -263,7 +265,7 @@ export function StageMenu({
   function toggle() {
     if (!open && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
-      setDropUp(window.innerHeight - rect.bottom < 240);
+      setDropUp(window.innerHeight - rect.bottom < 280);
     }
     setOpen((value) => !value);
   }

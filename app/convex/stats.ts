@@ -5,7 +5,7 @@ import { requireUserId } from './lib/auth'
 import { jobSource } from './lib/jobSource'
 import { bestRun, currentRun, dayIndexOf } from './lib/streak'
 
-type JobStatus = 'needs_update' | 'viewed' | 'applied' | 'interview' | 'accepted' | 'ghosted'
+type JobStatus = 'needs_update' | 'viewed' | 'applied' | 'interview' | 'accepted' | 'ghosted' | 'rejected'
 
 type TrendBucket = {
   label: string
@@ -105,6 +105,7 @@ export const getMyStatistics = query({
       interview: 0,
       accepted: 0,
       ghosted: 0,
+      rejected: 0,
     }
 
     let jobsThisWeek = 0
@@ -185,11 +186,11 @@ export const getMyStatistics = query({
       }
     }
 
-    // Only jobs actually sent: a viewed or ghosted one needs no document.
+    // Viewed jobs and closed applications need no document.
     let untailored = 0
     for (const job of jobs) {
       const status = (job.status ?? 'viewed') as JobStatus
-      if (status === 'viewed' || status === 'ghosted') continue
+      if (status === 'viewed' || status === 'ghosted' || status === 'rejected') continue
       if (!tailoredJobIds.has(job._id)) untailored += 1
     }
 
@@ -217,7 +218,7 @@ export const getMyStatistics = query({
     }
 
     const appliedOrBeyond =
-      jobCounts.needs_update + jobCounts.applied + jobCounts.interview + jobCounts.accepted + jobCounts.ghosted
+      jobCounts.needs_update + jobCounts.applied + jobCounts.interview + jobCounts.accepted + jobCounts.ghosted + jobCounts.rejected
     const interviewStage = jobCounts.interview + jobCounts.accepted
 
     const jobRates = {

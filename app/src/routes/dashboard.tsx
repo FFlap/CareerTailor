@@ -198,6 +198,7 @@ function DashboardBody({
     interview: 0,
     accepted: 0,
     ghosted: 0,
+    rejected: 0,
   };
   const docCounts = stats?.docCounts ?? {
     total: 0,
@@ -216,7 +217,7 @@ function DashboardBody({
   };
 
   const applied =
-    (counts.needs_update ?? 0) + counts.applied + counts.interview + counts.accepted + counts.ghosted;
+    (counts.needs_update ?? 0) + counts.applied + counts.interview + counts.accepted + counts.ghosted + (counts.rejected ?? 0);
   const interviewed = counts.interview + counts.accepted;
 
   // Statuses are exclusive, so the bands divide the set rather than track movement.
@@ -228,6 +229,7 @@ function DashboardBody({
     { id: "open", name: "Awaiting reply", color: ramp[2] },
     { id: "interview", name: "Interviewed", color: ramp[1] },
     { id: "ghosted", name: "Ghosted", color: GHOSTED_BAND },
+    { id: "rejected", name: "Rejected", color: "#ef4444" },
     { id: "talking", name: "In process", color: ramp[2] },
     { id: "accepted", name: "Offer", color: ramp[0] },
   ];
@@ -237,13 +239,14 @@ function DashboardBody({
     { source: "applied", target: "open", value: counts.applied + (counts.needs_update ?? 0) },
     { source: "applied", target: "interview", value: interviewed },
     { source: "applied", target: "ghosted", value: counts.ghosted },
+    { source: "applied", target: "rejected", value: counts.rejected ?? 0 },
     { source: "interview", target: "talking", value: counts.interview },
     { source: "interview", target: "accepted", value: counts.accepted },
   ].filter((link) => Number.isFinite(link.value) && link.value > 0);
   const flowColumns = [
     ["tracked"],
     ["viewed", "applied"],
-    ["open", "interview", "ghosted"],
+    ["open", "interview", "ghosted", "rejected"],
     ["talking", "accepted"],
   ];
 

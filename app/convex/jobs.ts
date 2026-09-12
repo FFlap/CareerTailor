@@ -30,6 +30,7 @@ export const upsertMyJob = mutation({
         v.literal('interview'),
         v.literal('accepted'),
         v.literal('ghosted'),
+        v.literal('rejected'),
       ),
     ),
   },
@@ -170,7 +171,8 @@ export const getMyAppliedProgress = query({
         job.status === 'needs_update' ||
         job.status === 'interview' ||
         job.status === 'accepted' ||
-        job.status === 'ghosted'
+        job.status === 'ghosted' ||
+        job.status === 'rejected'
       ) {
         appliedOrBeyondCount += 1
       }
@@ -214,6 +216,7 @@ export const setJobStatus = mutation({
       v.literal('interview'),
       v.literal('accepted'),
       v.literal('ghosted'),
+      v.literal('rejected'),
     ),
   },
   handler: async (ctx, args) => {

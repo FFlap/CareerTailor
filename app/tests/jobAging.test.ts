@@ -19,7 +19,7 @@ describe('application aging', () => {
     const due = ms('2026-09-12T10:00:00Z')
     expect(needsUpdate(job, due - 1)).toBe(false)
     expect(needsUpdate(job, due)).toBe(true)
-    for (const status of ['viewed', 'interview', 'accepted', 'ghosted', 'needs_update']) {
+    for (const status of ['viewed', 'interview', 'accepted', 'ghosted', 'rejected', 'needs_update']) {
       expect(needsUpdate({ ...job, status }, due)).toBe(false)
     }
   })
