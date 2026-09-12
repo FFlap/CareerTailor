@@ -90,6 +90,8 @@ export default defineSchema({
     title: v.string(),
     company: v.string(),
     description: v.string(),
+    notes: v.optional(v.string()),
+    notesUpdatedAt: v.optional(v.number()),
     status: v.union(
       v.literal("viewed"),
       v.literal("applied"),

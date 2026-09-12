@@ -6,7 +6,14 @@ import {
   useMutation,
   useQuery,
 } from "convex/react";
-import { useMemo, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { Search, X } from "lucide-react";
 
@@ -36,6 +43,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
 type JobStatusFilter = JobStatus | "all";
+
+const NOTE_LIMIT = 2000;
 
 export const Route = createFileRoute("/job-applications")({
   component: JobApplicationsPage,
@@ -121,16 +130,105 @@ function StageTab({
   );
 }
 
+/**
+ * Both dialogs here are the same object: a hairline panel, a title that says
+ * what it is, and the actions sitting on a footer rule. Escape and the backdrop
+ * both close it, so nothing traps you mid-edit.
+ */
+function Modal({
+  title,
+  subtitle,
+  width,
+  onClose,
+  children,
+  footer,
+}: {
+  title: string;
+  subtitle?: string;
+  width: string;
+  onClose: () => void;
+  children: ReactNode;
+  footer: ReactNode;
+}) {
+  const titleId = useId();
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    const { overflow } = document.body.style;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = overflow;
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [onClose]);
+
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/40 px-4 py-8"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        onClick={(event) => event.stopPropagation()}
+        className={cn(
+          "flex max-h-full w-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-800 dark:bg-slate-900",
+          width,
+        )}
+      >
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 px-5 py-3.5 dark:border-slate-800">
+          <div className="min-w-0">
+            <h2
+              id={titleId}
+              className="font-display text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-50"
+            >
+              {title}
+            </h2>
+            {subtitle && (
+              <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
+                {subtitle}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="-mr-1.5 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-slate-200 px-5 py-3.5 dark:border-slate-800">
+          {footer}
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 function JobApplicationsContent() {
   const jobs = useQuery(api.jobs.listMyJobs, JOBS_ARGS);
   const setJobStatus = useMutation(api.jobs.setJobStatus);
+  const setJobNotes = useMutation(api.jobs.setJobNotes);
   const upsertJob = useMutation(api.jobs.upsertMyJob);
-  const canUseDom = typeof document !== "undefined";
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<JobStatusFilter>("all");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [noteJob, setNoteJob] = useState<any | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [isNoteSaving, setIsNoteSaving] = useState(false);
+  const [noteError, setNoteError] = useState<string | null>(null);
   const [draft, setDraft] = useState({
     title: "",
     company: "",
@@ -146,7 +244,12 @@ function JobApplicationsContent() {
     return jobs.filter((job: any) => {
       const title = (job.title ?? "").toLowerCase();
       const company = (job.company ?? "").toLowerCase();
-      return title.includes(search) || company.includes(search);
+      const notes = (job.notes ?? "").toLowerCase();
+      return (
+        title.includes(search) ||
+        company.includes(search) ||
+        notes.includes(search)
+      );
     });
   }, [jobs, query]);
 
@@ -171,6 +274,35 @@ function JobApplicationsContent() {
 
   async function updateJobStatus(jobId: string, status: SelectableJobStatus) {
     await setJobStatus({ jobId: jobId as Id<"jobs">, status });
+  }
+
+  function openNoteEditor(job: any) {
+    setNoteJob(job);
+    setNoteDraft(job.notes ?? "");
+    setNoteError(null);
+  }
+
+  function closeNoteEditor() {
+    if (isNoteSaving) return;
+    setNoteJob(null);
+  }
+
+  async function saveNote(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!noteJob) return;
+    setNoteError(null);
+    try {
+      setIsNoteSaving(true);
+      await setJobNotes({
+        jobId: noteJob._id as Id<"jobs">,
+        notes: noteDraft,
+      });
+      setNoteJob(null);
+    } catch (error) {
+      setNoteError(error instanceof Error ? error.message : "Failed to save note.");
+    } finally {
+      setIsNoteSaving(false);
+    }
   }
 
   function openCreateModal() {
@@ -272,8 +404,8 @@ function JobApplicationsContent() {
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Role or company"
-                aria-label="Search jobs by role or company"
+                placeholder="Role, company, or notes"
+                aria-label="Search jobs by role, company, or notes"
                 className="h-8 w-full rounded-md border border-slate-200 bg-white pl-8 pr-7 text-[13px] text-slate-900 outline-none placeholder:text-slate-400 focus-visible:border-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-600"
               />
               {query && (
@@ -305,7 +437,7 @@ function JobApplicationsContent() {
                   jobs.length === 0
                     ? "The browser extension adds jobs as you browse. You can also add one by hand."
                     : query.trim()
-                      ? "Search covers role and company names."
+                      ? "Search covers role, company, and notes."
                       : statusFilter === "needs_update"
                         ? "Applied jobs move here automatically after one month without a stage change."
                         : "Move a job here from its stage menu, or look at another stage."
@@ -335,13 +467,14 @@ function JobApplicationsContent() {
               />
             ) : (
               <>
-                <JobListHeader />
+                <JobListHeader showNotes />
                 <ul>
                   {paged.pageItems.map((job: any) => (
                     <JobRow
                       key={job._id}
                       job={job}
                       onStatusChange={updateJobStatus}
+                      onNotesClick={openNoteEditor}
                     />
                   ))}
                 </ul>
@@ -360,135 +493,170 @@ function JobApplicationsContent() {
         </Panel>
       </Page>
 
-      {isCreateOpen &&
-        canUseDom &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/40 px-4 py-8"
-            onClick={closeCreateModal}
-          >
-            <div
-              className="flex w-full max-w-xl flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-800 dark:bg-slate-900"
-              onClick={(event) => event.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="manual-job-title"
-            >
-              <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3.5 dark:border-slate-800">
-                <div>
-                  <h2
-                    id="manual-job-title"
-                    className="font-display text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-50"
-                  >
-                    Add a job
-                  </h2>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    For roles the extension did not catch.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={closeCreateModal}
-                  className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-                  aria-label="Close"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <form
-                id="manual-job-form"
-                onSubmit={submitManualJob}
-                className="space-y-4 p-5"
-              >
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="manual-job-title-input">Title</Label>
-                    <Input
-                      id="manual-job-title-input"
-                      value={draft.title}
-                      onChange={(event) =>
-                        setDraft((prev) => ({
-                          ...prev,
-                          title: event.target.value,
-                        }))
-                      }
-                      placeholder="Senior Product Designer"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="manual-job-company-input">Company</Label>
-                    <Input
-                      id="manual-job-company-input"
-                      value={draft.company}
-                      onChange={(event) =>
-                        setDraft((prev) => ({
-                          ...prev,
-                          company: event.target.value,
-                        }))
-                      }
-                      placeholder="Arcade Labs"
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="manual-job-url-input">Job URL</Label>
-                  <Input
-                    id="manual-job-url-input"
-                    type="url"
-                    value={draft.url}
-                    onChange={(event) =>
-                      setDraft((prev) => ({ ...prev, url: event.target.value }))
-                    }
-                    placeholder="https://company.com/careers/123"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="manual-job-description-input">
-                    Description
-                  </Label>
-                  <Textarea
-                    id="manual-job-description-input"
-                    value={draft.description}
-                    onChange={(event) =>
-                      setDraft((prev) => ({
-                        ...prev,
-                        description: event.target.value,
-                      }))
-                    }
-                    placeholder="Paste the most relevant responsibilities and requirements."
-                    rows={6}
-                  />
-                </div>
-                {formError && (
-                  <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-200">
-                    {formError}
-                  </p>
-                )}
-              </form>
-              <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-5 py-3.5 dark:border-slate-800">
+      {noteJob && (
+        <Modal
+          title={noteJob.notes ? "Edit note" : "Add a note"}
+          subtitle={`${noteJob.title} · ${noteJob.company || "Company not listed"}`}
+          width="max-w-lg"
+          onClose={closeNoteEditor}
+          footer={
+            <>
+              {noteJob.notes && (
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={closeCreateModal}
-                  disabled={isSaving}
+                  onClick={() => setNoteDraft("")}
+                  disabled={isNoteSaving || !noteDraft}
+                  className="mr-auto text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400"
                 >
-                  Cancel
+                  Clear
                 </Button>
-                <Button
-                  type="submit"
-                  form="manual-job-form"
-                  disabled={isSaving || !canSubmit}
-                >
-                  {isSaving ? "Saving..." : "Save job"}
-                </Button>
+              )}
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={closeNoteEditor}
+                disabled={isNoteSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                form="job-note-form"
+                disabled={isNoteSaving}
+              >
+                {isNoteSaving ? "Saving…" : "Save note"}
+              </Button>
+            </>
+          }
+        >
+          <form id="job-note-form" onSubmit={saveNote} className="p-5">
+            <Label htmlFor="job-note-input" className="sr-only">
+              Note
+            </Label>
+            <Textarea
+              id="job-note-input"
+              autoFocus
+              value={noteDraft}
+              onChange={(event) => setNoteDraft(event.target.value)}
+              placeholder="Interview details, contact names, next steps, or anything worth remembering…"
+              maxLength={NOTE_LIMIT}
+              rows={8}
+              className="resize-none leading-relaxed"
+            />
+            {/* A counter at 0 of 2,000 is noise; near the ceiling it is news. */}
+            {noteDraft.length > NOTE_LIMIT * 0.8 && (
+              <p className="mt-2 text-right text-[11px] tabular-nums text-slate-400 dark:text-slate-500">
+                {(NOTE_LIMIT - noteDraft.length).toLocaleString()} characters
+                left
+              </p>
+            )}
+            {noteError && (
+              <p className="mt-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-200">
+                {noteError}
+              </p>
+            )}
+          </form>
+        </Modal>
+      )}
+
+      {isCreateOpen && (
+        <Modal
+          title="Add a job"
+          subtitle="For roles the extension did not catch."
+          width="max-w-xl"
+          onClose={closeCreateModal}
+          footer={
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={closeCreateModal}
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                form="manual-job-form"
+                disabled={isSaving || !canSubmit}
+              >
+                {isSaving ? "Saving…" : "Save job"}
+              </Button>
+            </>
+          }
+        >
+          <form
+            id="manual-job-form"
+            onSubmit={submitManualJob}
+            className="space-y-4 p-5"
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="manual-job-title-input">Title</Label>
+                <Input
+                  id="manual-job-title-input"
+                  value={draft.title}
+                  onChange={(event) =>
+                    setDraft((prev) => ({ ...prev, title: event.target.value }))
+                  }
+                  placeholder="Senior Product Designer"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="manual-job-company-input">Company</Label>
+                <Input
+                  id="manual-job-company-input"
+                  value={draft.company}
+                  onChange={(event) =>
+                    setDraft((prev) => ({
+                      ...prev,
+                      company: event.target.value,
+                    }))
+                  }
+                  placeholder="Arcade Labs"
+                  required
+                />
               </div>
             </div>
-          </div>,
-          document.body,
-        )}
+            <div className="space-y-2">
+              <Label htmlFor="manual-job-url-input">Job URL</Label>
+              <Input
+                id="manual-job-url-input"
+                type="url"
+                value={draft.url}
+                onChange={(event) =>
+                  setDraft((prev) => ({ ...prev, url: event.target.value }))
+                }
+                placeholder="https://company.com/careers/123"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="manual-job-description-input">Description</Label>
+              <Textarea
+                id="manual-job-description-input"
+                value={draft.description}
+                onChange={(event) =>
+                  setDraft((prev) => ({
+                    ...prev,
+                    description: event.target.value,
+                  }))
+                }
+                placeholder="Paste the most relevant responsibilities and requirements."
+                rows={6}
+              />
+            </div>
+            {formError && (
+              <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-200">
+                {formError}
+              </p>
+            )}
+          </form>
+        </Modal>
+      )}
+
     </SidebarLayout>
   );
 }

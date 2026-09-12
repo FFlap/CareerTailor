@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, StickyNote } from "lucide-react";
 import {
   useEffect,
   useRef,
@@ -68,8 +68,10 @@ export function jobStatusOf(job: { status?: string }): JobStatus {
  * Same track widths for the header and every row, so the columns line up. A
  * wide list earns a Source column rather than leaving the gap as air.
  */
-const COLUMNS =
+const DEFAULT_COLUMNS =
   "grid grid-cols-1 gap-y-2.5 @xl/list:grid-cols-[minmax(0,1fr)_4rem_9rem_5.75rem] @xl/list:gap-x-4 @xl/list:gap-y-0 @3xl/list:grid-cols-[minmax(0,1fr)_7rem_4rem_9rem_5.75rem]";
+const NOTES_COLUMNS =
+  "grid grid-cols-1 gap-y-2.5 @xl/list:grid-cols-[minmax(0,1fr)_4rem_9rem_minmax(8rem,0.8fr)_5.75rem] @xl/list:gap-x-4 @xl/list:gap-y-0 @3xl/list:grid-cols-[minmax(0,1fr)_7rem_4rem_9rem_minmax(9rem,0.8fr)_5.75rem]";
 
 /** How long you have been sitting on it reads better than the calendar day. */
 function formatAge(value: unknown) {
@@ -102,11 +104,11 @@ export function JobList({
   return <div className={cn("@container/list", className)}>{children}</div>;
 }
 
-export function JobListHeader() {
+export function JobListHeader({ showNotes = false }: { showNotes?: boolean }) {
   return (
     <div
       className={cn(
-        COLUMNS,
+        showNotes ? NOTES_COLUMNS : DEFAULT_COLUMNS,
         "hidden border-b border-slate-200 px-4 py-2 text-[10px] font-medium uppercase tracking-wider text-slate-400 @xl/list:grid dark:border-slate-800 dark:text-slate-500",
       )}
     >
@@ -114,6 +116,7 @@ export function JobListHeader() {
       <span className="hidden @3xl/list:block">Source</span>
       <span>Added</span>
       <span>Stage</span>
+      {showNotes && <span>Notes</span>}
       <span className="sr-only">Actions</span>
     </div>
   );
@@ -122,9 +125,11 @@ export function JobListHeader() {
 export function JobRow({
   job,
   onStatusChange,
+  onNotesClick,
 }: {
   job: any;
   onStatusChange: (jobId: string, status: SelectableJobStatus) => void;
+  onNotesClick?: (job: any) => void;
 }) {
   const status = jobStatusOf(job);
   const addedAt = job.addedAt ?? job.createdAt ?? job.lastSeenAt;
@@ -132,7 +137,12 @@ export function JobRow({
 
   return (
     <li className="group/row border-b border-slate-100 last:border-b-0 dark:border-slate-800/70">
-      <div className={cn(COLUMNS, "items-center px-4 py-3")}>
+      <div
+        className={cn(
+          onNotesClick ? NOTES_COLUMNS : DEFAULT_COLUMNS,
+          "items-center px-4 py-3",
+        )}
+      >
         <div className="min-w-0">
           {job.url ? (
             <a
@@ -175,6 +185,41 @@ export function JobRow({
           {sourceLabel(jobSource(job.url ?? "", job.source ?? ""))}
         </span>
 
+        {onNotesClick && (
+          <button
+            type="button"
+            onClick={() => onNotesClick(job)}
+            title={job.notes || `Add a note for ${job.title}`}
+            aria-label={
+              job.notes
+                ? `Edit note for ${job.title}`
+                : `Add note for ${job.title}`
+            }
+            className={cn(
+              "flex min-w-0 items-center gap-2 rounded-md border px-2.5 py-2 text-left text-xs transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15",
+              // Touch has no hover to reveal an outline, so narrow keeps one.
+              "border-slate-200 dark:border-slate-700",
+              "@xl/list:col-start-4 @xl/list:row-start-1 @xl/list:border-transparent @xl/list:px-2 @xl/list:py-1.5 @xl/list:group-hover/row:border-slate-200 @3xl/list:col-start-5 dark:@xl/list:border-transparent dark:@xl/list:group-hover/row:border-slate-700",
+              "hover:!border-slate-300 hover:bg-slate-50 dark:hover:!border-slate-600 dark:hover:bg-slate-800",
+              // A written note is the content; an empty one is an invitation.
+              job.notes
+                ? "text-slate-600 dark:text-slate-300"
+                : "border-dashed text-slate-400 dark:text-slate-500",
+            )}
+          >
+            {!job.notes && (
+              <StickyNote
+                aria-hidden
+                className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500"
+              />
+            )}
+            <span className="min-w-0 truncate">
+              {job.notes || "Add note"}
+            </span>
+          </button>
+        )}
+
         <span
           title={`Added ${formatExactDate(addedAt)}`}
           className="hidden text-xs tabular-nums text-slate-500 @xl/list:col-start-2 @xl/list:row-start-1 @xl/list:block @3xl/list:col-start-3 dark:text-slate-400"
@@ -210,7 +255,9 @@ export function JobRow({
               "border-slate-200 text-slate-700 dark:border-slate-700 dark:text-slate-200",
               "@xl/list:border-transparent @xl/list:text-slate-500 @xl/list:group-hover/row:border-slate-200 @xl/list:group-hover/row:text-slate-900 dark:@xl/list:text-slate-400 dark:@xl/list:group-hover/row:border-slate-700 dark:@xl/list:group-hover/row:text-slate-100",
               "hover:!border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/15 dark:hover:!border-slate-600 dark:hover:bg-slate-800",
-              "@xl/list:col-start-4 @xl/list:row-start-1 @xl/list:justify-self-end @3xl/list:col-start-5",
+              onNotesClick
+                ? "@xl/list:col-start-5 @xl/list:row-start-1 @xl/list:justify-self-end @3xl/list:col-start-6"
+                : "@xl/list:col-start-4 @xl/list:row-start-1 @xl/list:justify-self-end @3xl/list:col-start-5",
             )}
           >
             Generate

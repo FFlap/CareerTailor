@@ -12,6 +12,7 @@ const MAX_JOB_TEXT = {
   description: 50_000,
   source: 40,
   jobId: 200,
+  notes: 2_000,
 } as const
 
 export const upsertMyJob = mutation({
@@ -230,6 +231,26 @@ export const setJobStatus = mutation({
       status: args.status,
       appliedAt: appliedAtForStatus(job, args.status, now),
       updatedAt: now,
+    })
+    return { ok: true }
+  },
+})
+
+export const setJobNotes = mutation({
+  args: {
+    jobId: v.id('jobs'),
+    notes: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx)
+    const job = await ctx.db.get(args.jobId)
+    if (!job || job.userId !== userId) {
+      throw new Error('Not found.')
+    }
+    const notes = args.notes.trim().slice(0, MAX_JOB_TEXT.notes)
+    await ctx.db.patch(args.jobId, {
+      notes,
+      notesUpdatedAt: Date.now(),
     })
     return { ok: true }
   },
