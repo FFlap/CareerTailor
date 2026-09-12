@@ -297,7 +297,7 @@ function DashboardBody({
 
         <div className="space-y-4">
           {/* Hairlines come from the grid gap, which survives any wrap. */}
-          <Panel className="grid grid-cols-2 gap-px overflow-hidden bg-slate-200 sm:grid-cols-4 dark:bg-slate-800">
+          <Panel className="grid grid-cols-2 gap-px overflow-hidden bg-slate-200 sm:grid-cols-5 dark:bg-slate-800">
             <Cell
               label="Applied"
               value={applied}
@@ -318,6 +318,12 @@ function DashboardBody({
               value={counts.ghosted}
               hint={`of ${applied} ${applied === 1 ? "application" : "applications"}`}
               tone={counts.ghosted > 0 ? "loss" : undefined}
+            />
+            <Cell
+              label="Rejected"
+              value={counts.rejected ?? 0}
+              hint={`of ${applied} ${applied === 1 ? "application" : "applications"}`}
+              tone={(counts.rejected ?? 0) > 0 ? "loss" : undefined}
             />
           </Panel>
 
