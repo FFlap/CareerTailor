@@ -3,13 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>CareerTailor Extension Connected</title>
+    <title>Connecting CareerTailor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&family=Archivo:wght@500;600;700&display=swap"
+    />
     <link rel="stylesheet" href="../styles/base.css" />
+    <script src="../common/theme.js"></script>
   </head>
-  <body style="padding: 24px;">
-    <h1 style="margin: 0 0 8px 0;">Connected</h1>
-    <p class="small" id="status">Finishing setup…</p>
+  <body class="sheet">
+    <main class="sheet-inner">
+      <span class="brand">
+        <svg class="brand-mark" viewBox="-0.85 -0.95 25.5 53.6" aria-hidden="true" focusable="false">
+          <g stroke-width="0.9" stroke-linejoin="round">
+            <path fill="#7C73F4" stroke="#7C73F4" d="M1.58 0 L23 0 L14.77 11.8 L8.54 11.8 Z" />
+            <path fill="#756CF0" stroke="#756CF0" d="M10.44 14.3 L16.77 14.3 L18.04 17.93 L3.16 25.95 L6.86 15.6 Z" />
+            <path fill="#5849D1" stroke="#5849D1" d="M18.67 20.2 L20.99 29.64 L0.11 40.61 L3.16 28.17 Z" />
+            <path fill="#472E9F" stroke="#472E9F" d="M21.52 31.6 L23.73 41.34 L12.35 51.68 L9.92 51.68 L1.16 43.2 Z" />
+          </g>
+        </svg>
+        <span class="brand-name">CareerTailor</span>
+      </span>
+      <p class="callback-status" id="status">Finishing setup…</p>
+    </main>
     <script type="module" src="auth-callback.js"></script>
   </body>
 </html>
-

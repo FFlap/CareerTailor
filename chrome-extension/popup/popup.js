@@ -12,6 +12,7 @@ const requiredAppliedCountInput = document.getElementById("requiredAppliedCount"
 const blockedDomainsInput = document.getElementById("blockedDomains");
 const quotaProgressText = document.getElementById("quotaProgressText");
 const saveSettingsBtn = document.getElementById("saveSettingsBtn");
+const themeDarkInput = document.getElementById("themeDark");
 const jobCard = document.getElementById("jobCard");
 
 const jobTitleInput = document.getElementById("jobTitle");
@@ -21,7 +22,6 @@ const jobDescriptionInput = document.getElementById("jobDescription");
 const jobSourceBadge = document.getElementById("jobSource");
 const jobTitleDisplay = document.getElementById("jobTitleDisplay");
 const jobCompanyDisplay = document.getElementById("jobCompanyDisplay");
-const jobUrlDisplay = document.getElementById("jobUrlDisplay");
 const manualEntry = document.getElementById("manualEntry");
 
 const refreshJobBtn = document.getElementById("refreshJob");
@@ -46,15 +46,11 @@ function setSummaryText(el, value, fallback) {
   const trimmed = (value || "").trim();
   el.textContent = trimmed || fallback;
   el.classList.toggle("is-empty", !trimmed);
-  if (el === jobUrlDisplay) {
-    el.title = trimmed || "";
-  }
 }
 
 function updateSummary() {
   setSummaryText(jobTitleDisplay, jobTitleInput?.value, "Add job title");
   setSummaryText(jobCompanyDisplay, jobCompanyInput?.value, "Add company");
-  setSummaryText(jobUrlDisplay, jobUrlInput?.value, "Add job URL");
 }
 
 function revealManualEntry() {
@@ -145,6 +141,7 @@ async function refreshAuthStatus() {
   isConnected = Boolean(response?.ok && response.connected);
   if (authStatusEl) {
     authStatusEl.textContent = isConnected ? "Connected" : "Not connected";
+    authStatusEl.classList.toggle("is-on", isConnected);
   }
   if (connectBtn) {
     connectBtn.textContent = isConnected ? "Reconnect" : "Connect";
@@ -286,6 +283,13 @@ async function init() {
   settingsBtn?.addEventListener("click", () => {
     setSettingsPanelOpen(!isSettingsOpen);
   });
+
+  if (themeDarkInput) {
+    themeDarkInput.checked = document.documentElement.classList.contains("dark");
+    themeDarkInput.addEventListener("change", () => {
+      window.setTheme?.(themeDarkInput.checked);
+    });
+  }
 
   connectBtn?.addEventListener("click", () => {
     void openConnectFlow();

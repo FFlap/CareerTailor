@@ -3,109 +3,136 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&family=Archivo:wght@500;600;700&display=swap"
+    />
     <link rel="stylesheet" href="../styles/base.css" />
     <link rel="stylesheet" href="popup.css" />
-    <title>AI Resume Builder</title>
+    <script src="../common/theme.js"></script>
+    <title>CareerTailor</title>
   </head>
   <body>
+    <header class="appbar">
+      <span class="brand">
+        <svg class="brand-mark" viewBox="-0.85 -0.95 25.5 53.6" aria-hidden="true" focusable="false">
+          <g stroke-width="0.9" stroke-linejoin="round">
+            <path fill="#7C73F4" stroke="#7C73F4" d="M1.58 0 L23 0 L14.77 11.8 L8.54 11.8 Z" />
+            <path fill="#756CF0" stroke="#756CF0" d="M10.44 14.3 L16.77 14.3 L18.04 17.93 L3.16 25.95 L6.86 15.6 Z" />
+            <path fill="#5849D1" stroke="#5849D1" d="M18.67 20.2 L20.99 29.64 L0.11 40.61 L3.16 28.17 Z" />
+            <path fill="#472E9F" stroke="#472E9F" d="M21.52 31.6 L23.73 41.34 L12.35 51.68 L9.92 51.68 L1.16 43.2 Z" />
+          </g>
+        </svg>
+        <span class="brand-name">CareerTailor</span>
+      </span>
+      <span class="status-dot" id="authStatus">Not connected</span>
+      <button class="ghost sm settings-trigger" id="settingsBtn" type="button" aria-expanded="false">
+        Settings
+      </button>
+    </header>
+
     <main class="popup">
-      <header class="popup-header">
-        <div class="brand">
-          <span class="brand-mark"></span>
-          <div>
-            <div class="brand-name">CareerTailor</div>
-          </div>
-        </div>
-        <button class="ghost settings-trigger" id="settingsBtn" type="button" aria-expanded="false">
-          Settings
-        </button>
-      </header>
-
-      <section class="card settings-panel is-hidden" id="settingsPanel">
-        <div class="toolbar settings-toolbar">
-          <div>
-            <div class="section-title">Extension settings</div>
-            <p class="small">Manage connection and quota-based site blocking.</p>
-          </div>
+      <section class="panel settings-panel is-hidden" id="settingsPanel" aria-label="Extension settings">
+        <div class="panel-header">
+          <h2>Settings</h2>
         </div>
 
-        <div class="settings-list">
-          <div class="settings-row">
-            <span class="small">Connection</span>
-            <span class="badge" id="authStatus">Not connected</span>
-          </div>
+        <div class="row row-split">
+          <span class="row-text">
+            <span class="row-title">Account</span>
+            <span class="hint">Syncs captured jobs and reads today's applied count.</span>
+          </span>
+          <button class="outline sm" id="connectBtn" type="button">Connect</button>
+        </div>
 
-          <button class="secondary settings-connect" id="connectBtn" type="button">Connect</button>
-
-          <label class="toggle-row" for="blockerEnabled">
-            <span>Enable website blocker until quota is met</span>
-            <input id="blockerEnabled" type="checkbox" />
+        <div class="row row-split">
+          <label class="row-text" for="themeDark">
+            <span class="row-title">Dark theme</span>
           </label>
-
-          <div class="blocker-config is-hidden" id="blockerConfigFields">
-            <label for="requiredAppliedCount">Required applied jobs</label>
-            <input id="requiredAppliedCount" type="number" min="0" step="1" value="5" />
-
-            <label for="blockedDomains">Blocked websites (one per line)</label>
-            <textarea
-              id="blockedDomains"
-              placeholder="youtube.com&#10;reddit.com&#10;news.ycombinator.com"
-            ></textarea>
-
-            <p class="small settings-progress" id="quotaProgressText">Applied today: -- / --</p>
-          </div>
-
-          <button class="primary" id="saveSettingsBtn" type="button">Save settings</button>
-          <span class="small status" id="settingsStatus" role="status"></span>
+          <input id="themeDark" class="switch" type="checkbox" />
         </div>
+
+        <div class="row row-split">
+          <label class="row-text" for="blockerEnabled">
+            <span class="row-title">Focus mode</span>
+            <span class="hint">Blocks the sites below until you hit the day's quota.</span>
+          </label>
+          <input id="blockerEnabled" class="switch" type="checkbox" />
+        </div>
+
+        <div class="blocker-config is-hidden" id="blockerConfigFields">
+          <div class="field-row">
+            <label for="requiredAppliedCount">Daily quota</label>
+            <input id="requiredAppliedCount" class="quota-input" type="number" min="0" step="1" value="5" />
+          </div>
+          <div class="field-row align-start">
+            <label for="blockedDomains">Blocked sites</label>
+            <div>
+              <textarea
+                id="blockedDomains"
+                rows="4"
+                placeholder="youtube.com&#10;reddit.com&#10;news.ycombinator.com"
+              ></textarea>
+              <p class="hint field-hint">One site per line. Subdomains are included.</p>
+            </div>
+          </div>
+          <p class="hint quota-progress" id="quotaProgressText">Applied today: -- / --</p>
+        </div>
+
+        <footer class="panel-footer">
+          <p class="hint status" id="settingsStatus" role="status"></p>
+          <div class="actions">
+            <button class="primary" id="saveSettingsBtn" type="button">Save settings</button>
+          </div>
+        </footer>
       </section>
 
-      <section class="card" id="jobCard">
-        <div class="toolbar">
-          <div>
-            <div class="section-title">Job capture</div>
-            <p class="small">Pull from the current tab or add details manually.</p>
-          </div>
-          <button class="ghost" id="refreshJob">Rescrape</button>
+      <section class="panel job-panel" id="jobCard" aria-label="Job capture">
+        <div class="panel-header">
+          <h2>Job capture</h2>
+          <span class="meta" id="jobSource">No job detected</span>
+          <button class="ghost sm" id="refreshJob" type="button">Rescrape</button>
         </div>
 
         <div class="job-summary">
-          <span class="badge" id="jobSource">No job detected</span>
-          <div class="job-summary-details">
-            <div class="job-summary-title is-empty" id="jobTitleDisplay">Add job title</div>
-            <div class="job-summary-company is-empty" id="jobCompanyDisplay">Add company</div>
-            <div class="job-summary-url small is-empty" id="jobUrlDisplay">Add job URL</div>
-          </div>
+          <p class="job-title is-empty" id="jobTitleDisplay">Add job title</p>
+          <p class="job-company is-empty" id="jobCompanyDisplay">Add company</p>
         </div>
 
         <details class="manual-entry" id="manualEntry">
           <summary>
-            <span>Manual entry</span>
-            <span class="summary-hint small">Optional</span>
+            <span class="row-title">Edit details</span>
+            <span class="meta summary-hint">URL, title, company, description</span>
           </summary>
           <div class="manual-fields">
-            <label for="jobUrl">Job URL</label>
-            <input id="jobUrl" type="text" placeholder="https://job-posting.com/role" />
-            <div class="grid grid-2">
-              <div>
-                <label for="jobTitle">Job Title</label>
-                <input id="jobTitle" type="text" placeholder="Role title" />
-              </div>
-              <div>
-                <label for="jobCompany">Company</label>
-                <input id="jobCompany" type="text" placeholder="Company name" />
-              </div>
+            <div class="field-row">
+              <label for="jobUrl">Job URL</label>
+              <input id="jobUrl" type="text" placeholder="https://job-posting.com/role" />
             </div>
-            <label for="jobDescription">Job Description</label>
-            <textarea id="jobDescription" placeholder="Paste highlights if needed"></textarea>
+            <div class="field-row">
+              <label for="jobTitle">Title</label>
+              <input id="jobTitle" type="text" placeholder="Role title" />
+            </div>
+            <div class="field-row">
+              <label for="jobCompany">Company</label>
+              <input id="jobCompany" type="text" placeholder="Company name" />
+            </div>
+            <div class="field-row align-start">
+              <label for="jobDescription">Description</label>
+              <textarea id="jobDescription" rows="4" placeholder="Paste the posting, or leave it to the scraper"></textarea>
+            </div>
           </div>
         </details>
 
-        <div class="actions">
-          <button class="secondary" id="syncBtn">Sync Job</button>
-          <button class="primary" id="generateInAppBtn">Generate in Web App</button>
-        </div>
-        <span class="small status" id="statusText" role="status"></span>
+        <footer class="panel-footer">
+          <p class="hint status" id="statusText" role="status"></p>
+          <div class="actions">
+            <button class="outline" id="syncBtn" type="button">Sync job</button>
+            <button class="primary" id="generateInAppBtn" type="button">Generate in web app</button>
+          </div>
+        </footer>
       </section>
     </main>
     <script type="module" src="popup.js"></script>

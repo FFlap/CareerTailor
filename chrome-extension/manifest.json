@@ -43,7 +43,9 @@
         "pages/auth-callback.js",
         "pages/blocked.html",
         "pages/blocked.js",
-        "pages/blocked.css"
+        "pages/blocked.css",
+        "common/theme.js",
+        "styles/base.css"
       ],
       "matches": ["<all_urls>"]
     }

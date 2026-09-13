@@ -1,9 +1,18 @@
 const blockedDomainEl = document.getElementById("blockedDomain");
 const quotaProgressEl = document.getElementById("quotaProgress");
+const quotaBarEl = document.getElementById("quotaBar");
 const blockedReasonEl = document.getElementById("blockedReason");
 const blockedStatusEl = document.getElementById("blockedStatus");
 const checkAgainBtn = document.getElementById("checkAgainBtn");
 const openSettingsBtn = document.getElementById("openSettingsBtn");
+
+function renderQuota(applied, required) {
+  if (quotaProgressEl) quotaProgressEl.textContent = `${applied} / ${required}`;
+  if (quotaBarEl) {
+    const progress = required > 0 ? Math.min(100, (applied / required) * 100) : 0;
+    quotaBarEl.style.setProperty("--progress", `${progress}%`);
+  }
+}
 
 function setStatus(text) {
   if (blockedStatusEl) blockedStatusEl.textContent = text || "";
@@ -31,11 +40,9 @@ function isHttpUrl(url) {
 
 function renderInitialState(state) {
   if (blockedDomainEl) {
-    blockedDomainEl.textContent = state.blockedDomain || "This website";
+    blockedDomainEl.textContent = state.blockedDomain || "This site";
   }
-  if (quotaProgressEl) {
-    quotaProgressEl.textContent = `${state.applied} / ${state.required}`;
-  }
+  renderQuota(state.applied, state.required);
   if (blockedReasonEl) {
     blockedReasonEl.textContent =
       state.reason === "quota_not_met"
@@ -67,11 +74,7 @@ async function checkAccess(state) {
     return;
   }
 
-  if (quotaProgressEl) {
-    quotaProgressEl.textContent = `${response.appliedOrBeyondCount || 0} / ${
-      response.requiredAppliedCount || 0
-    }`;
-  }
+  renderQuota(response.appliedOrBeyondCount || 0, response.requiredAppliedCount || 0);
   setStatus("Still blocked. Apply to more jobs today and try again.");
 }
 
